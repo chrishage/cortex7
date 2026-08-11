@@ -1,0 +1,75 @@
+# =====================================================================
+# Deploy Cortex 7 (Dataform) via runner interno do GitLab
+# Fonte da verdade: git.tramontina.net/databricks/cortex
+#   develop -> DEV  (tra-prd-cortex-aecorsoft)
+#   main    -> PROD (tra-prd-cortex)
+#
+# AUTENTICAÇÃO: chave JSON de service account em BASE64, guardada em
+# variável CI/CD protegida + mascarada (Settings > CI/CD > Variables):
+#   GCP_SA_KEY_DEV_B64   -> base64 do JSON da SA do projeto DEV
+#   GCP_SA_KEY_PROD_B64  -> base64 do JSON da SA do projeto PROD
+#
+# Para gerar o base64 da chave (no seu PC/Cloud Shell):
+#   Linux/Mac : base64 -w0 sa-dataform-exec.json
+#   PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("sa.json"))
+# =====================================================================
+image: google/cloud-sdk:slim
+
+stages: [compile, deploy]
+
+variables:
+  DATAFORM_DIR: "src"        # onde está o workflow_settings.yaml
+  DATAFORM_VERSION: "3.0.59" # alinhar com dataformCoreVersion do repo
+
+# --- rotina comum: decodifica o base64, autentica e prepara o dataform ---
+.setup: &setup
+  - echo "${SA_KEY_B64}" | base64 -d > /tmp/sa-key.json
+  - gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+  - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json
+  - npm i -g @dataform/cli@${DATAFORM_VERSION}
+  - cd "${DATAFORM_DIR}"
+
+.cleanup: &cleanup
+  - rm -f /tmp/sa-key.json   # remove a chave decodificada ao final
+
+# ---------- COMPILE (valida em MR e nas branches) ----------
+compile:
+  stage: compile
+  variables:
+    SA_KEY_B64: "${GCP_SA_KEY_DEV_B64}"
+  script:
+    - *setup
+    - dataform compile
+  after_script:
+    - rm -f /tmp/sa-key.json
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# ---------- DEPLOY DEV (push na develop) ----------
+deploy_dev:
+  stage: deploy
+  variables:
+    SA_KEY_B64: "${GCP_SA_KEY_DEV_B64}"
+  script:
+    - *setup
+    - dataform run --default-location US
+  after_script:
+    - rm -f /tmp/sa-key.json
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+# ---------- DEPLOY PROD (push na main, com aprovação manual) ----------
+deploy_prod:
+  stage: deploy
+  variables:
+    SA_KEY_B64: "${GCP_SA_KEY_PROD_B64}"
+  script:
+    - *setup
+    - dataform run --default-location US
+  after_script:
+    - rm -f /tmp/sa-key.json
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual   # PROD só sobe com clique manual (trava de segurança)
