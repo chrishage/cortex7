@@ -14,32 +14,35 @@
 #   PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("sa.json"))
 # =====================================================================
 image: google/cloud-sdk:slim
-
 stages: [compile, deploy]
 
 variables:
-  DATAFORM_DIR: "src"        # onde está o workflow_settings.yaml
-  DATAFORM_VERSION: "3.0.59" # alinhar com dataformCoreVersion do repo
+  DATAFORM_VERSION: "3.0.64"
+  BQ_LOCATION: "US"
+  CUSTOMER_ACTION: "sap_customers_customers"
 
-# --- rotina comum: decodifica o base64, autentica e prepara o dataform ---
 .setup: &setup
   - echo "${SA_KEY_B64}" | base64 -d > /tmp/sa-key.json
   - gcloud auth activate-service-account --key-file=/tmp/sa-key.json
   - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json
+  - gcloud config set project "${GCP_PROJECT}"
+  - apt-get update -y && apt-get install -y nodejs npm python3 python3-pip curl >/dev/null
   - npm i -g @dataform/cli@${DATAFORM_VERSION}
-  - cd "${DATAFORM_DIR}"
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - export PATH="$HOME/.local/bin:$PATH"
+  - uv sync
+  - cp "${CORTEX_CONFIG_FILE}" config/config.yaml
+  - uv run cortex-build --config "config/config.yaml" --output-dir "build_out"
 
-.cleanup: &cleanup
-  - rm -f /tmp/sa-key.json   # remove a chave decodificada ao final
-
-# ---------- COMPILE (valida em MR e nas branches) ----------
 compile:
   stage: compile
   variables:
     SA_KEY_B64: "${GCP_SA_KEY_DEV_B64}"
+    GCP_PROJECT: "tra-prd-cortex-aecorsoft"
+    CORTEX_CONFIG_FILE: "${CORTEX_CONFIG_DEV}"
   script:
     - *setup
-    - dataform compile
+    - cd build_out && dataform compile
   after_script:
     - rm -f /tmp/sa-key.json
   rules:
@@ -47,29 +50,37 @@ compile:
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == "main"'
 
-# ---------- DEPLOY DEV (push na develop) ----------
 deploy_dev:
   stage: deploy
   variables:
     SA_KEY_B64: "${GCP_SA_KEY_DEV_B64}"
+    GCP_PROJECT: "tra-prd-cortex-aecorsoft"
+    CORTEX_CONFIG_FILE: "${CORTEX_CONFIG_DEV}"
   script:
     - *setup
-    - dataform run --default-location US
+    - cd build_out
+    - dataform run --actions "${CUSTOMER_ACTION}" --default-location ${BQ_LOCATION}
   after_script:
     - rm -f /tmp/sa-key.json
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
+  environment:
+    name: dev
 
-# ---------- DEPLOY PROD (push na main, com aprovação manual) ----------
 deploy_prod:
   stage: deploy
   variables:
     SA_KEY_B64: "${GCP_SA_KEY_PROD_B64}"
+    GCP_PROJECT: "tra-prd-cortex"
+    CORTEX_CONFIG_FILE: "${CORTEX_CONFIG_PROD}"
   script:
     - *setup
-    - dataform run --default-location US
+    - cd build_out
+    - dataform run --actions "${CUSTOMER_ACTION}" --default-location ${BQ_LOCATION}
   after_script:
     - rm -f /tmp/sa-key.json
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual   # PROD só sobe com clique manual (trava de segurança)
+      when: manual
+  environment:
+    name: prod
