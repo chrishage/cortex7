@@ -70,3 +70,4 @@ output_build/
 
 # Node cache
 .npm_cache/
+config/config.yaml

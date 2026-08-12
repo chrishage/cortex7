@@ -25,7 +25,12 @@ ecc:
     dataformTags: [sap, sales, sap_sd, source_aligned_product, masterdata, daily]
 s4:
   customers:
-    materializationType: incremental
+    materializationType: table
+    bigquery:
+      iceberg:
+        connection: "tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn"
+        bucketName: "tra-cortex-iceberg-dev"
+        fileFormat: "PARQUET"
     bigQueryLabels:
     - key: line_of_business
       value: sales

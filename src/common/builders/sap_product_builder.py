@@ -358,7 +358,8 @@ class SapProductBuilder(ProductBuilder[config_schema.DataProductModuleConfig]):
                 bigquery_config["labels"] = labels
 
             if bigquery_config:
-                table_config["bigquery"] = bigquery_config
+                existing_bq = table_config.get("bigquery", {})
+                table_config["bigquery"] = {**existing_bq, **bigquery_config}
 
             module_context = {"moduleId": module_id}
 

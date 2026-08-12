@@ -12,5 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-dataformCoreVersion: "3.0.59"
+dataformCoreVersion: "3.0.64"
 defaultLocation: "US"
+defaultIcebergConfig:
+  bucketName: tra-cortex-iceberg-dev
