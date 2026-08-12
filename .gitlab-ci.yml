@@ -22,7 +22,16 @@ variables:
   CUSTOMER_ACTION: "sap_customers_customers"
 
 .setup: &setup
-  - echo "${SA_KEY_B64}" | base64 -d > /tmp/sa-key.json
+  - echo "=== DEBUG: tamanho da variavel ==="
+  - echo -n "${SA_KEY_B64}" | wc -c
+  - echo "=== DEBUG: primeiros caracteres da variavel (deve ser ewogIC...) ==="
+  - echo -n "${SA_KEY_B64}" | head -c 20 ; echo ""
+  - echo "=== DEBUG: decodificando ==="
+  - echo "${SA_KEY_B64}" | base64 -d > /tmp/sa-key.json 2>&1 || echo "ERRO no base64 -d"
+  - echo "=== DEBUG: tamanho do arquivo decodificado ==="
+  - wc -c < /tmp/sa-key.json
+  - echo "=== DEBUG: primeiro caractere do JSON (deve ser {) ==="
+  - head -c 30 /tmp/sa-key.json ; echo ""
   - gcloud auth activate-service-account --key-file=/tmp/sa-key.json
   - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json
   - gcloud config set project "${GCP_PROJECT}"
