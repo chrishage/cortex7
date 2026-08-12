@@ -36,6 +36,8 @@ variables:
 
 compile:
   stage: compile
+  tags:
+    - deploy  
   variables:
     SA_KEY_B64: "${GCP_SA_KEY_DEV_B64}"
     GCP_PROJECT: "tra-prd-cortex-aecorsoft"
@@ -52,6 +54,8 @@ compile:
 
 deploy_dev:
   stage: deploy
+  tags:
+    - deploy  
   variables:
     SA_KEY_B64: "${GCP_SA_KEY_DEV_B64}"
     GCP_PROJECT: "tra-prd-cortex-aecorsoft"
@@ -69,6 +73,8 @@ deploy_dev:
 
 deploy_prod:
   stage: deploy
+  tags:
+    - deploy  
   variables:
     SA_KEY_B64: "${GCP_SA_KEY_PROD_B64}"
     GCP_PROJECT: "tra-prd-cortex"
