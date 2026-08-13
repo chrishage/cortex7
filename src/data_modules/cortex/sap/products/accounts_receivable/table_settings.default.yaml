@@ -32,8 +32,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: transactional
-    dataformTags: [sap, finance, sap_fi, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, finance, sap_fi, source_aligned_product, transactional, hourly]
 s4:
   accounts_receivable:
     materializationType: incremental
@@ -44,5 +43,9 @@ s4:
       value: sap_fi
     - key: data_class
       value: transactional
-    dataformTags: [sap, finance, sap_fi, source_aligned_product, transactional, 
-        daily]
+    dataformTags: [sap, finance, sap_fi, source_aligned_product, transactional, daily]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET

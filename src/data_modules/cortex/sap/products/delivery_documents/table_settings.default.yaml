@@ -22,8 +22,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        daily]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, daily]
   delivery_document_items:
     materializationType: incremental
     bigQueryLabels:
@@ -33,8 +32,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        daily]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, daily]
   delivery_blocking_reasons:
     materializationType: incremental
     bigQueryLabels:
@@ -55,8 +53,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        daily]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, daily]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   delivery_document_items:
     materializationType: incremental
     bigQueryLabels:
@@ -66,8 +68,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        daily]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, daily]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   delivery_blocking_reasons:
     materializationType: incremental
     bigQueryLabels:
@@ -78,4 +84,9 @@ s4:
     - key: data_class
       value: masterdata
     dataformTags: [sap, sales, sap_sd, source_aligned_product, masterdata, daily]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
 

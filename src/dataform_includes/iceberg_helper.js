@@ -2,78 +2,87 @@
  * Copyright 2026 Google LLC
  * Licensed under the Apache License, Version 2.0
  *
- * Iceberg helper for Cortex Framework.
+ * Iceberg helper for Cortex Framework — supports FULL REFRESH and INCREMENTAL.
  *
  * WHY THIS EXISTS:
  * The Dataform publish() API does NOT emit `WITH CONNECTION ... OPTIONS(table_format='ICEBERG')`
  * from a `bigquery.iceberg` config block — it silently creates a NATIVE BigQuery table.
- * To create a real BigLake Iceberg managed table we emit an explicit
- * CREATE OR REPLACE TABLE ... WITH CONNECTION ... OPTIONS(...) via a Dataform
- * `operations` action.
+ * This helper emits explicit Iceberg DDL/DML via a Dataform `operations` action.
  *
- * The product SELECT queries call incremental.getFilter(ctx, ...) which internally
- * uses ctx.when(ctx.incremental(), ...) and ctx.self() — methods that exist in the
- * publish() context but NOT in the operations() context. Iceberg tables here use a
- * full-refresh (CREATE OR REPLACE), i.e. non-incremental, so we shim the ctx with:
- *   - incremental() => false      (so the incremental filter collapses to the empty branch)
- *   - when(cond, t, f) => cond ? t : f
- *   - self() => fully-qualified table (in case referenced)
- *   - ref/resolve => delegate to the real operations ctx
+ * MODES (decided by tableConfig.materializationType):
+ *   - "table"       -> full refresh: CREATE OR REPLACE TABLE ... AS <select>
+ *   - "incremental" -> BigQuery scripting: IF table not exists THEN CREATE ... AS <select>
+ *                      ELSE MERGE <delta> INTO table ON uniqueKeys. Always EXPORT METADATA.
  *
- * USAGE (in a product .js, replacing publish(...).query(...)):
+ * The product SELECT calls incremental.getFilter(ctx, ...) which uses
+ * ctx.incremental()/ctx.when()/ctx.self(). We shim these:
+ *   - full refresh  -> incremental()=false (filter collapses -> full scan)
+ *   - incremental   -> incremental()=true  (filter active; on 1st run MAX() returns
+ *                      the 1900 default so ALL rows are brought in, which is correct)
+ *
+ * USAGE (product .js):
  *   const iceberg_helper = require("includes/iceberg_helper.js");
  *   iceberg_helper.publishProduct(actionName, publishConfig, tableConfig, (ctx) => `SELECT ...`);
  */
 
 function isIceberg(tableConfig) {
   return !!(tableConfig && tableConfig.bigquery && tableConfig.bigquery.iceberg
-            && tableConfig.bigquery.iceberg.bucketName);
+    && tableConfig.bigquery.iceberg.bucketName);
 }
 
 function buildStorageUri(iceberg, tableName) {
   const bucket = iceberg.bucketName;
-  const root = iceberg.tableFolderRoot ? iceberg.tableFolderRoot.replace(/\/+$/,"") + "/" : "";
-  const sub  = iceberg.tableFolderSubpath ? iceberg.tableFolderSubpath.replace(/\/+$/,"") + "/" : "";
+  const root = iceberg.tableFolderRoot ? iceberg.tableFolderRoot.replace(/\/+$/, "") + "/" : "";
+  const sub = iceberg.tableFolderSubpath ? iceberg.tableFolderSubpath.replace(/\/+$/, "") + "/" : "";
   return `gs://${bucket}/${root}${sub}${tableName}`;
 }
 
 /**
- * Wraps the operations ctx so that publish()-only methods used inside the product
- * query (incremental filters) behave correctly for a full-refresh Iceberg table.
+ * Shim ctx for the operations context.
+ * @param {boolean} incrementalMode whether incremental() should report true.
  */
-function shimContext(ctx, fqTable) {
+function shimContext(ctx, fqTable, incrementalMode) {
   return {
-    // delegate the real ones
     ref: (...args) => ctx.ref(...args),
     resolve: (...args) => ctx.resolve(...args),
-    // full-refresh => not incremental
-    incremental: () => false,
+    incremental: () => incrementalMode,
     when: (cond, trueBranch, falseBranch = "") => (cond ? trueBranch : falseBranch),
     self: () => fqTable,
-    // pass through anything else Dataform exposes
-    name: ctx.name ? (...a) => ctx.name(...a) : undefined,
-    schema: ctx.schema ? (...a) => ctx.schema(...a) : undefined,
-    database: ctx.database ? (...a) => ctx.database(...a) : undefined,
   };
+}
+
+/**
+ * Extract plain column names from publishConfig.columns.
+ * columns may be an object {name: description} or array of names.
+ */
+function columnNames(publishConfig) {
+  const cols = publishConfig.columns;
+  if (!cols) return [];
+  if (Array.isArray(cols)) return cols.slice();
+  return Object.keys(cols);
 }
 
 function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   if (!isIceberg(tableConfig)) {
+    // Native Cortex behaviour (table / view / incremental).
     publish(actionName, publishConfig).query(queryFn);
     return;
   }
 
-  const iceberg    = tableConfig.bigquery.iceberg;
-  const project    = publishConfig.database;
-  const dataset    = publishConfig.schema;
-  const tableName  = publishConfig.name;
-  const fqTable    = `\`${project}.${dataset}.${tableName}\``;
+  const iceberg = tableConfig.bigquery.iceberg;
+  const matType = tableConfig.materializationType || "incremental";
+  const project = publishConfig.database;
+  const dataset = publishConfig.schema;
+  const tableName = publishConfig.name;
+  const fqTable = `\`${project}.${dataset}.${tableName}\``;
   const connection = iceberg.connection || "DEFAULT";
   const connClause = connection === "DEFAULT"
     ? "WITH CONNECTION DEFAULT"
     : `WITH CONNECTION \`${connection}\``;
   const fileFormat = iceberg.fileFormat || "PARQUET";
   const storageUri = buildStorageUri(iceberg, tableName);
+  const optionsClause =
+    `OPTIONS(file_format='${fileFormat}', table_format='ICEBERG', storage_uri='${storageUri}')`;
 
   const opConfig = {
     type: "operations",
@@ -86,20 +95,69 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   };
 
   operate(actionName, opConfig).queries((ctx) => {
-    const shimmed = shimContext(ctx, fqTable);
-    const selectSql = queryFn(shimmed);
-    const createSql = `
-CREATE OR REPLACE TABLE ${fqTable}
+    const exportSql = `EXPORT TABLE METADATA FROM ${fqTable}`;
+
+    // ---------- FULL REFRESH ----------
+    if (matType === "table") {
+      const selectSql = queryFn(shimContext(ctx, fqTable, /*incremental=*/false));
+      const createSql =
+        `CREATE OR REPLACE TABLE ${fqTable}
 ${connClause}
-OPTIONS(
-  file_format = '${fileFormat}',
-  table_format = 'ICEBERG',
-  storage_uri = '${storageUri}'
-)
+${optionsClause}
 AS
 ${selectSql}`;
-    const exportSql = `EXPORT TABLE METADATA FROM ${fqTable}`;
-    return [createSql, exportSql];
+      return [createSql, exportSql];
+    }
+
+    // ---------- INCREMENTAL ----------
+    // TWO versions of the SELECT are needed:
+    //  - selectFull  (incremental=false): NO self-referencing filter. Used by the
+    //    CREATE ... WHERE FALSE so it does not read the not-yet-created table.
+    //  - selectDelta (incremental=true): with the incremental filter (reads MAX from
+    //    the table). Used by the MERGE, where the table is guaranteed to exist.
+    const selectFull = queryFn(shimContext(ctx, fqTable, /*incremental=*/false));
+    const selectDelta = queryFn(shimContext(ctx, fqTable, /*incremental=*/true));
+    const uniqueKeys = publishConfig.uniqueKey || [];
+    if (uniqueKeys.length === 0) {
+      throw new Error(
+        `[iceberg_helper] Incremental Iceberg table '${tableName}' requires uniqueKey in publishConfig.`);
+    }
+    const cols = columnNames(publishConfig);
+
+    const onClause = uniqueKeys.map(k => `T.\`${k}\` = S.\`${k}\``).join(" AND ");
+    const updateSet = cols.length > 0
+      ? cols.map(c => `T.\`${c}\` = S.\`${c}\``).join(",\n    ")
+      : null;
+    const insertCols = cols.length > 0 ? cols.map(c => `\`${c}\``).join(", ") : null;
+    const insertVals = cols.length > 0 ? cols.map(c => `S.\`${c}\``).join(", ") : null;
+
+    // Two separate statements (NOT an IF/ELSE script), because BigQuery validates
+    // the whole script before running — a MERGE referencing a not-yet-created table
+    // would fail validation. Instead:
+    //   1. CREATE TABLE IF NOT EXISTS ... AS SELECT ... WHERE FALSE  -> creates the
+    //      Iceberg table with the correct schema on the first run; no-op afterwards.
+    //   2. MERGE ... -> always runs; the table is guaranteed to exist. On the first
+    //      run the table is empty, so every row goes through WHEN NOT MATCHED (insert).
+    const createIfNotExists =
+      `CREATE TABLE IF NOT EXISTS ${fqTable}
+${connClause}
+${optionsClause}
+AS
+SELECT * FROM (
+${selectFull}
+) WHERE FALSE`;
+
+    const mergeSql =
+      `MERGE ${fqTable} T
+USING (
+${selectDelta}
+) S
+ON ${onClause}
+WHEN MATCHED THEN UPDATE SET
+    ${updateSet}
+WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals})`;
+
+    return [createIfNotExists, mergeSql, exportSql];
   });
 }
 

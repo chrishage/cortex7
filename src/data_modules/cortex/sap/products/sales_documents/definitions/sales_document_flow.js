@@ -22,6 +22,7 @@ const materializationType = tableConfig.materializationType || "incremental";
 const incremental = require("includes/incremental.js");
 const publish_config = require("includes/publish_config.js");
 const sql_helper = require("includes/sql_helper.js");
+const iceberg_helper = require("includes/iceberg_helper.js");
 
 const publishConfig = publish_config.getPublishConfig(
   materializationType,
@@ -43,7 +44,10 @@ const precedingCats = filters.preceding_document_categories || ['C'];
 const deliveryCats = filters.delivery_document_categories || ['J', 'T'];
 const billingCats = filters.billing_document_categories || ['M'];
 
-publish(moduleContext.moduleId + "_" + tableConfig.tableName, publishConfig).query(
+iceberg_helper.publishProduct(
+  moduleContext.moduleId + "_" + tableConfig.tableName,
+  publishConfig,
+  tableConfig,
   (ctx) => `
 SELECT
   SO.mandt AS client_mandt,

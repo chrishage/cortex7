@@ -22,8 +22,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        monthly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, monthly]
   billing_document_items:
     materializationType: incremental
     bigQueryLabels:
@@ -33,8 +32,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        monthly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, monthly]
   billing_blocking_reasons:
     materializationType: incremental
     bigQueryLabels:
@@ -44,11 +42,15 @@ ecc:
       value: sap_sd
     - key: data_class
       value: masterdata
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, masterdata, 
-        monthly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, masterdata, monthly]
 s4:
   billing_document_headers:
     materializationType: incremental
+    bigquery:
+      iceberg:
+        connection: "tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn"
+        bucketName: "tra-cortex-iceberg-dev"
+        fileFormat: "PARQUET"
     bigQueryLabels:
     - key: line_of_business
       value: sales
@@ -56,8 +58,7 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        monthly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, monthly]
   billing_document_items:
     materializationType: incremental
     bigQueryLabels:
@@ -67,8 +68,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        monthly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   billing_blocking_reasons:
     materializationType: incremental
     bigQueryLabels:
@@ -78,5 +83,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: masterdata
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, masterdata, 
-        monthly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, masterdata, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET

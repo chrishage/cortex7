@@ -22,8 +22,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_items:
     materializationType: incremental
     bigQueryLabels:
@@ -33,8 +32,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_schedule_lines:
     materializationType: incremental
     bigQueryLabels:
@@ -44,8 +42,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_partners:
     materializationType: incremental
     bigQueryLabels:
@@ -55,8 +52,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_header_statuses:
     materializationType: incremental
     bigQueryLabels:
@@ -66,8 +62,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_item_statuses:
     materializationType: incremental
     bigQueryLabels:
@@ -77,8 +72,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_flow:
     materializationType: incremental
     bigQueryLabels:
@@ -88,8 +82,7 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     filters:
       preceding_document_categories: ['C']
       delivery_document_categories: ['J', 'T']
@@ -104,8 +97,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   sales_document_items:
     materializationType: incremental
     bigQueryLabels:
@@ -115,8 +112,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   sales_document_schedule_lines:
     materializationType: incremental
     bigQueryLabels:
@@ -126,8 +127,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   sales_document_partners:
     materializationType: incremental
     bigQueryLabels:
@@ -137,8 +142,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   sales_document_header_statuses:
     materializationType: incremental
     bigQueryLabels:
@@ -148,8 +157,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   sales_document_item_statuses:
     materializationType: incremental
     bigQueryLabels:
@@ -159,8 +172,12 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   sales_document_flow:
     materializationType: incremental
     bigQueryLabels:
@@ -170,9 +187,13 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
-    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, 
-        hourly]
+    dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     filters:
       preceding_document_categories: ['C']
       delivery_document_categories: ['J', 'T']
       billing_document_categories: ['M']
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET

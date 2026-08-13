@@ -22,8 +22,7 @@ ecc:
       value: sap_mm
     - key: data_class
       value: transactional
-    dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, 
-        transactional, daily]
+    dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, transactional, daily]
   material_movement_types:
     materializationType: incremental
     bigQueryLabels:
@@ -33,8 +32,7 @@ ecc:
       value: sap_mm
     - key: data_class
       value: masterdata
-    dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, masterdata,
-      monthly]
+    dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, masterdata, monthly]
 s4:
   material_documents:
     materializationType: incremental
@@ -45,8 +43,12 @@ s4:
       value: sap_mm
     - key: data_class
       value: transactional
-    dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, 
-        transactional, daily]
+    dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, transactional, daily]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   material_movement_types:
     materializationType: incremental
     bigQueryLabels:
@@ -56,5 +58,9 @@ s4:
       value: sap_mm
     - key: data_class
       value: masterdata
-    dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, masterdata,
-      monthly]
+    dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, masterdata, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET

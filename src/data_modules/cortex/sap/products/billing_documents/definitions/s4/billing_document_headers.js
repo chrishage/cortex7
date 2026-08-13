@@ -24,6 +24,7 @@ const date = require("includes/date.js");
 const incremental = require("includes/incremental.js");
 const publish_config = require("includes/publish_config.js");
 const sql_helper = require("includes/sql_helper.js");
+const iceberg_helper = require("includes/iceberg_helper.js");
 
 const publishConfig = publish_config.getPublishConfig(
   materializationType,
@@ -35,7 +36,10 @@ const publishConfig = publish_config.getPublishConfig(
   ]
 );
 
-publish(moduleContext.moduleId + "_" + tableConfig.tableName, publishConfig).query(
+iceberg_helper.publishProduct(
+  moduleContext.moduleId + "_" + tableConfig.tableName,
+  publishConfig,
+  tableConfig,
   (ctx) => `
 WITH 
   date_dimension AS (
@@ -186,7 +190,7 @@ LEFT JOIN date_dimension AS dimensional_date_fkdat
 LEFT JOIN date_dimension AS dimensional_date_aedat
   ON vbrk.aedat = dimensional_date_aedat.date
 ${sql_helper.buildDynamicWhere([
-  incremental.getFilter(ctx, ["vbrk"])
-])}
+    incremental.getFilter(ctx, ["vbrk"])
+  ])}
 `,
 );

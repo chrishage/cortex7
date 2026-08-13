@@ -22,8 +22,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
   languages:
     materializationType: incremental
     bigQueryLabels:
@@ -33,8 +32,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
   countries:
     materializationType: incremental
     bigQueryLabels:
@@ -44,8 +42,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
   country_dialing_codes:
     materializationType: incremental
     bigQueryLabels:
@@ -55,8 +52,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
   country_tax_regions:
     materializationType: incremental
     bigQueryLabels:
@@ -66,8 +62,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
   system_status_texts:
     materializationType: incremental
     bigQueryLabels:
@@ -77,8 +72,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
 s4:
   company_codes:
     materializationType: incremental
@@ -89,8 +83,12 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   languages:
     materializationType: incremental
     bigQueryLabels:
@@ -100,8 +98,12 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   countries:
     materializationType: incremental
     bigQueryLabels:
@@ -111,8 +113,12 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   country_dialing_codes:
     materializationType: incremental
     bigQueryLabels:
@@ -122,8 +128,12 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   country_tax_regions:
     materializationType: incremental
     bigQueryLabels:
@@ -133,8 +143,12 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   system_status_texts:
     materializationType: incremental
     bigQueryLabels:
@@ -144,6 +158,10 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata,
-      monthly]
+    dataformTags: [sap, cross_domain, sap_fi, source_aligned_product, masterdata, monthly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
 
