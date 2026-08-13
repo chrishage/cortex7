@@ -76,19 +76,20 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   const tableName = publishConfig.name;
   const fqTable = `\`${project}.${dataset}.${tableName}\``;
 
-  // Per-environment overrides (set by the CI pipeline):
-  //   ICEBERG_CONNECTION  e.g. "DEFAULT" (recommended) or full path
-  //   ICEBERG_BUCKET      e.g. "tra-cortex-iceberg-dev" or "tra-cortex-iceberg-prod"
-  // Fall back to the table_settings values when the env vars are absent (local runs).
-  const envConn = (typeof process !== "undefined" && process.env && process.env.ICEBERG_CONNECTION) || null;
-  const envBucket = (typeof process !== "undefined" && process.env && process.env.ICEBERG_BUCKET) || null;
+  // Per-environment overrides via Dataform vars (official mechanism).
+  // The CI pipeline passes them: dataform run --vars=icebergBucket=...,icebergConnection=...
+  // In the .js they are available at dataform.projectConfig.vars.
+  // Fall back to the table_settings values when the vars are absent (local runs).
+  const dfVars = (typeof dataform !== "undefined" && dataform.projectConfig && dataform.projectConfig.vars) || {};
+  const varConn = dfVars.icebergConnection || null;
+  const varBucket = dfVars.icebergBucket || null;
 
-  const connection = envConn || iceberg.connection || "DEFAULT";
+  const connection = varConn || iceberg.connection || "DEFAULT";
   const connClause = connection === "DEFAULT"
     ? "WITH CONNECTION DEFAULT"
     : `WITH CONNECTION \`${connection}\``;
   const fileFormat = iceberg.fileFormat || "PARQUET";
-  const effectiveIceberg = envBucket ? Object.assign({}, iceberg, { bucketName: envBucket }) : iceberg;
+  const effectiveIceberg = varBucket ? Object.assign({}, iceberg, { bucketName: varBucket }) : iceberg;
   const storageUri = buildStorageUri(effectiveIceberg, tableName);
   const optionsClause =
     `OPTIONS(file_format='${fileFormat}', table_format='ICEBERG', storage_uri='${storageUri}')`;
