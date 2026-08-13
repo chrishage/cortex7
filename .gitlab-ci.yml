@@ -73,8 +73,6 @@ variables:
   - curl -LsSf https://astral.sh/uv/install.sh | sh
   - export PATH="$HOME/.local/bin:$PATH"
   - uv sync
-  - export ICEBERG_CONNECTION="$ICEBERG_CONNECTION"
-  - export ICEBERG_BUCKET="$ICEBERG_BUCKET"
   - cp "$CORTEX_CONFIG_FILE" config/config.yaml
   - uv run cortex-build --config config/config.yaml --output-dir build_out
 
@@ -88,9 +86,11 @@ compile:
     SA_KEY_B64: "$GCP_SA_KEY_DEV_B64"
     GCP_PROJECT: "tra-prd-cortex-aecorsoft"
     CORTEX_CONFIG_FILE: "$CORTEX_CONFIG_DEV"
+    ICEBERG_CONNECTION: "DEFAULT"
+    ICEBERG_BUCKET: "tra-cortex-iceberg-dev"
   script:
     - *setup
-    - cd build_out && dataform compile
+    - cd build_out && dataform compile --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION
   after_script:
     - rm -f /tmp/sa-key.json
   rules:
@@ -116,7 +116,7 @@ compile:
 
 dev_masterdata:
   <<: *dev_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_MASTERDATA --default-location $BQ_LOCATION" ]
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_MASTERDATA --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
       when: manual
@@ -124,7 +124,7 @@ dev_masterdata:
 
 dev_sales_tx:
   <<: *dev_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SALES_TX --default-location $BQ_LOCATION" ]
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SALES_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
       when: manual
@@ -132,7 +132,7 @@ dev_sales_tx:
 
 dev_finance_tx:
   <<: *dev_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_FINANCE_TX --default-location $BQ_LOCATION" ]
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_FINANCE_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
       when: manual
@@ -140,7 +140,7 @@ dev_finance_tx:
 
 dev_supply_tx:
   <<: *dev_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SUPPLY_TX --default-location $BQ_LOCATION" ]
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SUPPLY_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
       when: manual
@@ -166,24 +166,24 @@ dev_supply_tx:
 
 prod_masterdata:
   <<: *prod_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_MASTERDATA --default-location $BQ_LOCATION" ]
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_MASTERDATA --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "masterdata"'
 
 prod_sales_tx:
   <<: *prod_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SALES_TX --default-location $BQ_LOCATION" ]
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SALES_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "sales_tx"'
 
 prod_finance_tx:
   <<: *prod_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_FINANCE_TX --default-location $BQ_LOCATION" ]
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_FINANCE_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "finance_tx"'
 
 prod_supply_tx:
   <<: *prod_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SUPPLY_TX --default-location $BQ_LOCATION" ]
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SUPPLY_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "supply_tx"'
