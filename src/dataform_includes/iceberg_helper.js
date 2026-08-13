@@ -75,12 +75,21 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   const dataset = publishConfig.schema;
   const tableName = publishConfig.name;
   const fqTable = `\`${project}.${dataset}.${tableName}\``;
-  const connection = iceberg.connection || "DEFAULT";
+
+  // Per-environment overrides (set by the CI pipeline):
+  //   ICEBERG_CONNECTION  e.g. "DEFAULT" (recommended) or full path
+  //   ICEBERG_BUCKET      e.g. "tra-cortex-iceberg-dev" or "tra-cortex-iceberg-prod"
+  // Fall back to the table_settings values when the env vars are absent (local runs).
+  const envConn = (typeof process !== "undefined" && process.env && process.env.ICEBERG_CONNECTION) || null;
+  const envBucket = (typeof process !== "undefined" && process.env && process.env.ICEBERG_BUCKET) || null;
+
+  const connection = envConn || iceberg.connection || "DEFAULT";
   const connClause = connection === "DEFAULT"
     ? "WITH CONNECTION DEFAULT"
     : `WITH CONNECTION \`${connection}\``;
   const fileFormat = iceberg.fileFormat || "PARQUET";
-  const storageUri = buildStorageUri(iceberg, tableName);
+  const effectiveIceberg = envBucket ? Object.assign({}, iceberg, { bucketName: envBucket }) : iceberg;
+  const storageUri = buildStorageUri(effectiveIceberg, tableName);
   const optionsClause =
     `OPTIONS(file_format='${fileFormat}', table_format='ICEBERG', storage_uri='${storageUri}')`;
 
