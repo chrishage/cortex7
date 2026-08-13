@@ -75,12 +75,22 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   const dataset = publishConfig.schema;
   const tableName = publishConfig.name;
   const fqTable = `\`${project}.${dataset}.${tableName}\``;
-  const connection = iceberg.connection || "DEFAULT";
+
+  // Per-environment overrides via Dataform vars (official mechanism).
+  // The CI pipeline passes them: dataform run --vars=icebergBucket=...,icebergConnection=...
+  // In the .js they are available at dataform.projectConfig.vars.
+  // Fall back to the table_settings values when the vars are absent (local runs).
+  const dfVars = (typeof dataform !== "undefined" && dataform.projectConfig && dataform.projectConfig.vars) || {};
+  const varConn = dfVars.icebergConnection || null;
+  const varBucket = dfVars.icebergBucket || null;
+
+  const connection = varConn || iceberg.connection || "DEFAULT";
   const connClause = connection === "DEFAULT"
     ? "WITH CONNECTION DEFAULT"
     : `WITH CONNECTION \`${connection}\``;
   const fileFormat = iceberg.fileFormat || "PARQUET";
-  const storageUri = buildStorageUri(iceberg, tableName);
+  const effectiveIceberg = varBucket ? Object.assign({}, iceberg, { bucketName: varBucket }) : iceberg;
+  const storageUri = buildStorageUri(effectiveIceberg, tableName);
   const optionsClause =
     `OPTIONS(file_format='${fileFormat}', table_format='ICEBERG', storage_uri='${storageUri}')`;
 

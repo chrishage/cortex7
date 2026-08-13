@@ -1,36 +1,70 @@
 # =====================================================================
-# Deploy Cortex 7 (Dataform) via runner interno do GitLab
-# Fonte da verdade: git.tramontina.net/databricks/cortex
-#   develop -> DEV  (tra-prd-cortex-aecorsoft)
-#   main    -> PROD (tra-prd-cortex)
+# Deploy Cortex 7 (Dataform) via runner interno — GRUPOS
 #
-# AUTENTICAÇÃO: chave JSON de service account em BASE64, guardada em
-# variável CI/CD protegida + mascarada (Settings > CI/CD > Variables):
-#   GCP_SA_KEY_DEV_B64   -> base64 do JSON da SA do projeto DEV
-#   GCP_SA_KEY_PROD_B64  -> base64 do JSON da SA do projeto PROD
+# DEV  (branch develop): deploy MANUAL por grupo  (você clica em ▶ no pipeline)
+# PROD (branch main)   : deploy AUTOMÁTICO por grupo via Pipeline Schedules
 #
-# Para gerar o base64 da chave (no seu PC/Cloud Shell):
-#   Linux/Mac : base64 -w0 sa-dataform-exec.json
-#   PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("sa.json"))
+# SCHEDULES a criar (Build > Pipeline schedules), TODOS com target = main:
+#   - "PROD Masterdata (diário)" : cron  0 3 * * *   var DEPLOY_GROUP=masterdata
+#   - "PROD Vendas (horário)"    : cron  0 * * * *   var DEPLOY_GROUP=sales_tx
+#   - "PROD Finanças (horário)"  : cron 15 * * * *   var DEPLOY_GROUP=finance_tx
+#   - "PROD Supply (horário)"    : cron 30 * * * *   var DEPLOY_GROUP=supply_tx
+#
+# VARIÁVEIS CI/CD: GCP_SA_KEY_DEV_B64, GCP_SA_KEY_PROD_B64,
+#   CORTEX_CONFIG_DEV (File), CORTEX_CONFIG_PROD (File)
 # =====================================================================
 image: google/cloud-sdk:slim
-stages: [compile, deploy]
+stages: [compile, deploy_dev, deploy_prod]
 
 variables:
   DATAFORM_VERSION: "3.0.64"
   BQ_LOCATION: "US"
-  CUSTOMER_ACTION: "sap_customers_customers"
+
+  ACTIONS_MASTERDATA: >-
+    --actions sap_customers_customers
+    --actions sap_materials_materials
+    --actions sap_materials_material_groups
+    --actions sap_materials_material_plants
+    --actions sap_materials_material_types
+    --actions sap_materials_material_to_bom_link
+    --actions sap_materials_materials_by_storage_location
+    --actions sap_business_partners_business_partners
+    --actions sap_business_partners_business_partner_addresses
+    --actions sap_business_partners_business_partner_bank_details
+    --actions sap_global_settings_company_codes
+    --actions sap_global_settings_countries
+    --actions sap_global_settings_country_dialing_codes
+    --actions sap_global_settings_country_tax_regions
+    --actions sap_global_settings_languages
+    --actions sap_global_settings_system_status_texts
+    --actions sap_material_batches_material_batch_stocks
+    --actions sap_material_batches_material_cross_plant_batches
+    --actions sap_material_batches_material_plant_batches
+  ACTIONS_SALES_TX: >-
+    --actions sap_sales_documents_sales_document_headers
+    --actions sap_sales_documents_sales_document_items
+    --actions sap_sales_documents_sales_document_partners
+    --actions sap_sales_documents_sales_document_flow
+    --actions sap_sales_documents_sales_document_header_statuses
+    --actions sap_sales_documents_sales_document_item_statuses
+    --actions sap_sales_documents_sales_document_schedule_lines
+    --actions sap_billing_documents_billing_document_headers
+    --actions sap_billing_documents_billing_document_items
+    --actions sap_billing_documents_billing_blocking_reasons
+    --actions sap_delivery_documents_delivery_document_headers
+    --actions sap_delivery_documents_delivery_document_items
+    --actions sap_delivery_documents_delivery_blocking_reasons
+  ACTIONS_FINANCE_TX: >-
+    --actions sap_universal_journal_universal_journal_entry_line_items
+    --actions sap_universal_journal_universal_journal_entry_ledgers
+    --actions sap_universal_journal_group_journal_entries
+    --actions sap_accounts_receivable_accounts_receivable
+  ACTIONS_SUPPLY_TX: >-
+    --actions sap_materials_movement_material_documents
+    --actions sap_materials_movement_material_movement_types
 
 .setup: &setup
-  - 'echo "DEBUG tamanho da variavel:"'
-  - echo -n "$SA_KEY_B64" | wc -c
-  - 'echo "DEBUG primeiros chars:"'
-  - echo "$SA_KEY_B64" | cut -c1-20
   - echo "$SA_KEY_B64" | base64 -d > /tmp/sa-key.json
-  - 'echo "DEBUG tamanho do arquivo decodificado:"'
-  - wc -c < /tmp/sa-key.json
-  - 'echo "DEBUG inicio do json:"'
-  - head -c 30 /tmp/sa-key.json
   - gcloud auth activate-service-account --key-file=/tmp/sa-key.json
   - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json
   - gcloud config set project "$GCP_PROJECT"
@@ -42,59 +76,114 @@ variables:
   - cp "$CORTEX_CONFIG_FILE" config/config.yaml
   - uv run cortex-build --config config/config.yaml --output-dir build_out
 
+# =====================================================================
+# COMPILE — valida em MR e em push na develop
+# =====================================================================
 compile:
   stage: compile
-  tags:
-    - deploy  
+  tags: [deploy]
   variables:
-    SA_KEY_B64: "${GCP_SA_KEY_DEV_B64}"
+    SA_KEY_B64: "$GCP_SA_KEY_DEV_B64"
     GCP_PROJECT: "tra-prd-cortex-aecorsoft"
-    CORTEX_CONFIG_FILE: "${CORTEX_CONFIG_DEV}"
+    CORTEX_CONFIG_FILE: "$CORTEX_CONFIG_DEV"
+    ICEBERG_CONNECTION: "DEFAULT"
+    ICEBERG_BUCKET: "tra-cortex-iceberg-dev"
   script:
     - *setup
-    - cd build_out && dataform compile
+    - cd build_out && dataform compile --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION
   after_script:
     - rm -f /tmp/sa-key.json
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
 
-deploy_dev:
-  stage: deploy
-  tags:
-    - deploy  
+# =====================================================================
+# DEV — MANUAL por grupo (branch develop). Aparecem como ▶ no pipeline.
+# =====================================================================
+.dev_base: &dev_base
+  stage: deploy_dev
+  tags: [deploy]
   variables:
-    SA_KEY_B64: "${GCP_SA_KEY_DEV_B64}"
+    SA_KEY_B64: "$GCP_SA_KEY_DEV_B64"
     GCP_PROJECT: "tra-prd-cortex-aecorsoft"
-    CORTEX_CONFIG_FILE: "${CORTEX_CONFIG_DEV}"
-  script:
-    - *setup
-    - cd build_out
-    - dataform run --actions "${CUSTOMER_ACTION}" --default-location ${BQ_LOCATION}
+    CORTEX_CONFIG_FILE: "$CORTEX_CONFIG_DEV"
+    ICEBERG_CONNECTION: "DEFAULT"
+    ICEBERG_BUCKET: "tra-cortex-iceberg-dev"
   after_script:
     - rm -f /tmp/sa-key.json
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "develop"'
   environment:
     name: dev
 
-deploy_prod:
-  stage: deploy
-  tags:
-    - deploy  
+dev_masterdata:
+  <<: *dev_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_MASTERDATA --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+
+dev_sales_tx:
+  <<: *dev_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SALES_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+
+dev_finance_tx:
+  <<: *dev_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_FINANCE_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+
+dev_supply_tx:
+  <<: *dev_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SUPPLY_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+
+# =====================================================================
+# PROD — AUTOMÁTICO por grupo via SCHEDULES (branch main)
+# Cada schedule define DEPLOY_GROUP e a cron.
+# =====================================================================
+.prod_base: &prod_base
+  stage: deploy_prod
+  tags: [deploy]
   variables:
-    SA_KEY_B64: "${GCP_SA_KEY_PROD_B64}"
+    SA_KEY_B64: "$GCP_SA_KEY_PROD_B64"
     GCP_PROJECT: "tra-prd-cortex"
-    CORTEX_CONFIG_FILE: "${CORTEX_CONFIG_PROD}"
-  script:
-    - *setup
-    - cd build_out
-    - dataform run --actions "${CUSTOMER_ACTION}" --default-location ${BQ_LOCATION}
+    CORTEX_CONFIG_FILE: "$CORTEX_CONFIG_PROD"
+    ICEBERG_CONNECTION: "DEFAULT"
+    ICEBERG_BUCKET: "tra-cortex-iceberg-prod"
   after_script:
     - rm -f /tmp/sa-key.json
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
   environment:
     name: prod
+
+prod_masterdata:
+  <<: *prod_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_MASTERDATA --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "masterdata"'
+
+prod_sales_tx:
+  <<: *prod_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SALES_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "sales_tx"'
+
+prod_finance_tx:
+  <<: *prod_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_FINANCE_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "finance_tx"'
+
+prod_supply_tx:
+  <<: *prod_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_SUPPLY_TX --vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "supply_tx"'

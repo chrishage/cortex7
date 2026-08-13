@@ -14,5 +14,6 @@
 
 dataformCoreVersion: "3.0.64"
 defaultLocation: "US"
-defaultIcebergConfig:
-  bucketName: tra-cortex-iceberg-dev
+vars:
+  icebergBucket: "tra-cortex-iceberg-dev"
+  icebergConnection: "DEFAULT"
