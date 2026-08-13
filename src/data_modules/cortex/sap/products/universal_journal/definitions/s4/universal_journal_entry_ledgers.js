@@ -20,6 +20,7 @@
 const moduleConfig = config.product[moduleContext.moduleId];
 const materializationType = tableConfig.materializationType || "table";
 const publish_config = require("includes/publish_config.js");
+const iceberg_helper = require("includes/iceberg_helper.js");
 
 const publishConfig = publish_config.getPublishConfig(
   materializationType,
@@ -32,7 +33,10 @@ const publishConfig = publish_config.getPublishConfig(
   ]
 );
 
-publish(moduleContext.moduleId + "_" + tableConfig.tableName, publishConfig).query(
+iceberg_helper.publishProduct(
+  moduleContext.moduleId + "_" + tableConfig.tableName,
+  publishConfig,
+  tableConfig,
   (ctx) => `
 SELECT
   finsc_ledger.mandt AS client_mandt,

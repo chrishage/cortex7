@@ -22,14 +22,18 @@ s4:
       value: sap_fi
     - key: data_class
       value: transactional
-    dataformTags: [sap, finance, sap_fi, sap_co, source_aligned_product, 
-        transactional, hourly]
+    dataformTags: [sap, finance, sap_fi, sap_co, source_aligned_product, transactional, hourly]
     clusterDetails:
       columns: [company_code_rbukrs]
     partitionDetails:
       column: posting_date_in_the_document_budat
       partitionType: DATE
       timeGrain: MONTH
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   universal_journal_entry_ledgers:
     materializationType: table
     bigQueryLabels:
@@ -39,8 +43,12 @@ s4:
       value: sap_fi
     - key: data_class
       value: transactional
-    dataformTags: [sap, finance, sap_fi, sap_co, source_aligned_product, 
-        transactional, daily]
+    dataformTags: [sap, finance, sap_fi, sap_co, source_aligned_product, transactional, daily]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   group_journal_entries:
     materializationType: incremental
     bigQueryLabels:
@@ -50,5 +58,9 @@ s4:
       value: sap_fi
     - key: data_class
       value: transactional
-    dataformTags: [sap, finance, sap_fi, sap_co, source_aligned_product, 
-        transactional, daily]
+    dataformTags: [sap, finance, sap_fi, sap_co, source_aligned_product, transactional, daily]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET

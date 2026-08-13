@@ -71,3 +71,8 @@ output_build/
 # Node cache
 .npm_cache/
 config/config.yaml
+
+build_out/
+q.sql
+scratch/
+*.sql

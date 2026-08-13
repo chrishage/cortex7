@@ -21,8 +21,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, 
-        source_aligned_product, masterdata, daily]
+    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, source_aligned_product, masterdata, daily]
     materializationType: incremental
   business_partner_addresses:
     bigQueryLabels:
@@ -32,8 +31,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, 
-        source_aligned_product, masterdata, daily]
+    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, source_aligned_product, masterdata, daily]
     materializationType: incremental
   business_partner_bank_details:
     bigQueryLabels:
@@ -43,8 +41,7 @@ ecc:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, 
-        source_aligned_product, masterdata, daily]
+    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, source_aligned_product, masterdata, daily]
     materializationType: incremental
 s4:
   business_partners:
@@ -55,9 +52,13 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, 
-        source_aligned_product, masterdata, daily]
+    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, source_aligned_product, masterdata, daily]
     materializationType: incremental
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   business_partner_addresses:
     bigQueryLabels:
     - key: line_of_business
@@ -66,9 +67,13 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, 
-        source_aligned_product, masterdata, daily]
+    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, source_aligned_product, masterdata, daily]
     materializationType: incremental
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
   business_partner_bank_details:
     bigQueryLabels:
     - key: line_of_business
@@ -77,6 +82,10 @@ s4:
       value: sap_fi
     - key: data_class
       value: masterdata
-    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, 
-        source_aligned_product, masterdata, daily]
+    dataformTags: [sap, cross_domain, sap_fi, sap_sd, sap_mm, source_aligned_product, masterdata, daily]
     materializationType: incremental
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
