@@ -63,6 +63,15 @@ variables:
     --actions sap_materials_movement_material_documents
     --actions sap_materials_movement_material_movement_types
 
+.setup_build: &setup_build
+  - apt-get update -y && apt-get install -y nodejs npm python3 python3-pip curl
+  - npm i -g @dataform/cli@$DATAFORM_VERSION
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - export PATH="$HOME/.local/bin:$PATH"
+  - uv sync
+  - if [ -n "$CORTEX_CONFIG_FILE" ] && [ -f "$CORTEX_CONFIG_FILE" ]; then cp "$CORTEX_CONFIG_FILE" config/config.yaml; else echo "CORTEX_CONFIG_FILE indisponivel (var protegida) - usando config/config.yaml do repo"; fi
+  - uv run cortex-build --config config/config.yaml --output-dir build_out
+
 .setup: &setup
   - echo "$SA_KEY_B64" | base64 -d > /tmp/sa-key.json
   - gcloud auth activate-service-account --key-file=/tmp/sa-key.json
