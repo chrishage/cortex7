@@ -1,0 +1,30 @@
+# Copyright 2026 Tramontina S.A.
+# Table Settings for sales_documents_ext
+
+ecc:
+  sales_document_items_ext:
+    materializationType: incremental
+    bigQueryLabels:
+    - key: line_of_business
+      value: sales
+    - key: sap_module
+      value: sap_sd
+    - key: data_class
+      value: transactional
+    dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
+s4:
+  sales_document_items_ext:
+    materializationType: incremental
+    bigQueryLabels:
+    - key: line_of_business
+      value: sales
+    - key: sap_module
+      value: sap_sd
+    - key: data_class
+      value: transactional
+    dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET

@@ -1708,6 +1708,15 @@ common:
       value: sap_sd
     dataformTags: [sap, foundation, sales, sap_sd, hourly]
 - source:
+    tableName: vbkd
+  target:
+    bigQueryLabels:
+    - key: line_of_business
+      value: sales
+    - key: sap_module
+      value: sap_sd
+    dataformTags: [sap, foundation, sales, sap_sd, hourly]
+- source:
     tableName: vbpa
   target:
     bigQueryLabels:
