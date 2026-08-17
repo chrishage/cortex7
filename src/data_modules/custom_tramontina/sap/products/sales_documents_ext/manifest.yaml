@@ -1,0 +1,19 @@
+# Copyright 2026 Tramontina S.A.
+# Cortex 7 Data Product Extension: sales_documents_ext
+
+displayName: SAP Sales Documents Extension (Tramontina)
+description: Ampliação dos produtos standard sap_sales_documents_sales_document_headers e sap_sales_documents_sales_document_items com campos comerciais da tabela VBKD (PLTYP, BZIRK, INCO1, ZTERM).
+category: consumption_product
+type: sales_documents_ext
+dependencies:
+  sapRaw:
+    supportedVersions:
+    - ecc
+    - s4
+    tables:
+      common:
+      - vbkd
+    modulePath: cortex.sap.foundations.sap
+  sapSalesDocuments:
+    modulePath: cortex.sap.products.sales_documents
+builder: sap_product

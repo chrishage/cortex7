@@ -1,0 +1,19 @@
+# Copyright 2026 Tramontina S.A.
+description: Extension view for Sales Document Headers with VBKD fields (PLTYP, BZIRK, INCO1, ZTERM).
+fields:
+  - name: client_mandt
+    description: Client (Mandant), PK
+  - name: document_number_vbeln
+    description: Sales Document, PK
+  - name: price_list_type_pltyp
+    description: Price List Type (VBKD-PLTYP)
+  - name: sales_district_bzirk
+    description: Sales District (VBKD-BZIRK)
+  - name: incoterms_classification_inco1
+    description: Incoterms Part 1 (VBKD-INCO1)
+  - name: customer_payment_terms_zterm
+    description: Terms of Payment Key (VBKD-ZTERM)
+  - name: source_last_updated_at
+    description: Source Last Updated At
+  - name: bq_loaded_at
+    description: BigQuery Loaded At
