@@ -40,7 +40,7 @@ SELECT
     IFNULL(vbkd_hdr.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
   ) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM ${ctx.ref(moduleConfig.sources.sapSalesDocuments.datasetId, "sap_sales_documents_sales_document_headers")} AS sdh
+FROM \`${dataform.projectConfig.vars.dataProject || moduleConfig.targetProjectId}.data_products.sales_document_headers\` AS sdh
 LEFT JOIN ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "vbkd")} AS vbkd_hdr
   ON  vbkd_hdr.mandt = sdh.client_mandt
   AND vbkd_hdr.vbeln = sdh.document_number_vbeln
