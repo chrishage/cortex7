@@ -1,16 +1,16 @@
-﻿# =====================================================================
-# Deploy Cortex 7 (Dataform) via runner interno â€” GRUPOS
+# =====================================================================
+# Deploy Cortex 7 (Dataform) via runner interno — GRUPOS
 #
-# DEV  (branch develop): deploy MANUAL por grupo  (vocÃª clica em â–¶ no pipeline)
-# PROD (branch main)   : deploy AUTOMÃTICO por grupo via Pipeline Schedules
+# DEV  (branch develop): deploy MANUAL por grupo  (você clica em ▶ no pipeline)
+# PROD (branch main)   : deploy AUTOMÁTICO por grupo via Pipeline Schedules
 #
 # SCHEDULES a criar (Build > Pipeline schedules), TODOS com target = main:
-#   - "PROD Masterdata (diÃ¡rio)" : cron  0 3 * * *   var DEPLOY_GROUP=masterdata
-#   - "PROD Vendas (horÃ¡rio)"    : cron  0 * * * *   var DEPLOY_GROUP=sales_tx
-#   - "PROD FinanÃ§as (horÃ¡rio)"  : cron 15 * * * *   var DEPLOY_GROUP=finance_tx
-#   - "PROD Supply (horÃ¡rio)"    : cron 30 * * * *   var DEPLOY_GROUP=supply_tx
+#   - "PROD Masterdata (diário)" : cron  0 3 * * *   var DEPLOY_GROUP=masterdata
+#   - "PROD Vendas (horário)"    : cron  0 * * * *   var DEPLOY_GROUP=sales_tx
+#   - "PROD Finanças (horário)"  : cron 15 * * * *   var DEPLOY_GROUP=finance_tx
+#   - "PROD Supply (horário)"    : cron 30 * * * *   var DEPLOY_GROUP=supply_tx
 #
-# VARIÃVEIS CI/CD: GCP_SA_KEY_DEV_B64, GCP_SA_KEY_PROD_B64,
+# VARIÁVEIS CI/CD: GCP_SA_KEY_DEV_B64, GCP_SA_KEY_PROD_B64,
 #   CORTEX_CONFIG_DEV (File), CORTEX_CONFIG_PROD (File)
 # =====================================================================
 image: google/cloud-sdk:slim
@@ -54,6 +54,7 @@ variables:
     --actions sap_delivery_documents_delivery_document_headers
     --actions sap_delivery_documents_delivery_document_items
     --actions sap_delivery_documents_delivery_blocking_reasons
+    --actions sales_documents_ext_sales_document_items_ext
   ACTIONS_FINANCE_TX: >-
     --actions sap_universal_journal_universal_journal_entry_line_items
     --actions sap_universal_journal_universal_journal_entry_ledgers
@@ -62,15 +63,6 @@ variables:
   ACTIONS_SUPPLY_TX: >-
     --actions sap_materials_movement_material_documents
     --actions sap_materials_movement_material_movement_types
-
-.setup_build: &setup_build
-  - apt-get update -y && apt-get install -y nodejs npm python3 python3-pip curl
-  - npm i -g @dataform/cli@$DATAFORM_VERSION
-  - curl -LsSf https://astral.sh/uv/install.sh | sh
-  - export PATH="$HOME/.local/bin:$PATH"
-  - uv sync
-  - if [ -n "$CORTEX_CONFIG_FILE" ] && [ -f "$CORTEX_CONFIG_FILE" ]; then cp "$CORTEX_CONFIG_FILE" config/config.yaml; else echo "CORTEX_CONFIG_FILE indisponivel (var protegida) - usando config/config.yaml do repo"; fi
-  - uv run cortex-build --config config/config.yaml --output-dir build_out
 
 .setup: &setup
   - echo "$SA_KEY_B64" | base64 -d > /tmp/sa-key.json
@@ -86,7 +78,7 @@ variables:
   - uv run cortex-build --config config/config.yaml --output-dir build_out
 
 # =====================================================================
-# COMPILE â€” valida em MR e em push na develop
+# COMPILE — valida em MR e em push na develop
 # =====================================================================
 compile:
   stage: compile
@@ -107,7 +99,7 @@ compile:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
 
 # =====================================================================
-# DEV â€” MANUAL por grupo (branch develop). Aparecem como â–¶ no pipeline.
+# DEV — MANUAL por grupo (branch develop). Aparecem como ▶ no pipeline.
 # =====================================================================
 .dev_base: &dev_base
   stage: deploy_dev
@@ -156,7 +148,7 @@ dev_supply_tx:
       allow_failure: true
 
 # =====================================================================
-# PROD â€” AUTOMÃTICO por grupo via SCHEDULES (branch main)
+# PROD — AUTOMÁTICO por grupo via SCHEDULES (branch main)
 # Cada schedule define DEPLOY_GROUP e a cron.
 # =====================================================================
 .prod_base: &prod_base
