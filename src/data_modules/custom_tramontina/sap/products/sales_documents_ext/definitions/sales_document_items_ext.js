@@ -32,6 +32,7 @@ iceberg_helper.publishProduct(
   (ctx) => `
 SELECT
   sdi.* EXCEPT(source_last_updated_at, bq_loaded_at),
+  COALESCE(vbkd_item.pltyp, vbkd_hdr.pltyp) AS price_list_type_pltyp,
   COALESCE(vbkd_item.bzirk, vbkd_hdr.bzirk) AS sales_district_bzirk,
   COALESCE(vbkd_item.inco1, vbkd_hdr.inco1) AS incoterms_classification_inco1,
   COALESCE(vbkd_item.zterm, vbkd_hdr.zterm) AS customer_payment_terms_zterm,
