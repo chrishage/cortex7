@@ -55,6 +55,7 @@ variables:
     --actions sap_delivery_documents_delivery_document_items
     --actions sap_delivery_documents_delivery_blocking_reasons
     --actions sales_documents_ext_sales_document_items_ext
+    --actions sales_documents_ext_sales_document_headers_ext
   ACTIONS_FINANCE_TX: >-
     --actions sap_universal_journal_universal_journal_entry_line_items
     --actions sap_universal_journal_universal_journal_entry_ledgers
