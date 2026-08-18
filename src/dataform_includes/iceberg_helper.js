@@ -30,11 +30,16 @@ function isIceberg(tableConfig) {
     && tableConfig.bigquery.iceberg.bucketName);
 }
 
-function buildStorageUri(iceberg, tableName) {
+function buildStorageUri(iceberg, tableName, productFolder) {
   const bucket = iceberg.bucketName;
-  const root = iceberg.tableFolderRoot ? iceberg.tableFolderRoot.replace(/\/+$/, "") + "/" : "";
-  const sub = iceberg.tableFolderSubpath ? iceberg.tableFolderSubpath.replace(/\/+$/, "") + "/" : "";
-  return `gs://${bucket}/${root}${sub}${tableName}`;
+  // Override manual via table_settings tem prioridade
+  if (iceberg.tableFolderRoot || iceberg.tableFolderSubpath) {
+    const root = iceberg.tableFolderRoot ? iceberg.tableFolderRoot.replace(/\/+$/, "") + "/" : "";
+    const sub = iceberg.tableFolderSubpath ? iceberg.tableFolderSubpath.replace(/\/+$/, "") + "/" : "";
+    return `gs://${bucket}/${root}${sub}${tableName}`;
+  }
+  // Padrão novo: cortex_data_products/<produto>/<definition>
+  return `gs://${bucket}/cortex_data_products/${productFolder}/${tableName}`;
 }
 
 /**
@@ -90,7 +95,9 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
     : `WITH CONNECTION \`${connection}\``;
   const fileFormat = iceberg.fileFormat || "PARQUET";
   const effectiveIceberg = varBucket ? Object.assign({}, iceberg, { bucketName: varBucket }) : iceberg;
-  const storageUri = buildStorageUri(effectiveIceberg, tableName);
+  const productId = actionName.slice(0, actionName.length - (tableName.length + 1));
+  const productFolder = productId.replace(/^sap_/, "");
+  const storageUri = buildStorageUri(effectiveIceberg, tableName, productFolder);
   const optionsClause =
     `OPTIONS(file_format='${fileFormat}', table_format='ICEBERG', storage_uri='${storageUri}')`;
 
