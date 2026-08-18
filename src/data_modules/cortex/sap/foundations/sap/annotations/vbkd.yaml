@@ -1,0 +1,19 @@
+# Copyright 2026 Tramontina S.A.
+# SAP Table Annotation: VBKD (Sales Document: Business Data)
+
+description: "Sales Document: Business Data"
+fields:
+- name: "mandt"
+  description: "Client (Mandant)"
+- name: "vbeln"
+  description: "Sales Document"
+- name: "posnr"
+  description: "Sales Document Item"
+- name: "bzirk"
+  description: "Sales District"
+- name: "inco1"
+  description: "Incoterms (Part 1)"
+- name: "zterm"
+  description: "Terms of Payment Key"
+- name: "recordstamp"
+  description: "Record Ingestion Timestamp"
