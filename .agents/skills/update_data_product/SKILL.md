@@ -77,6 +77,7 @@ Once approved, modify the files by applying the changes cleanly. Follow all conv
 ### 4. Python Unit Tests Update (`tests/unit/<namespace>/test_<type>.py`)
 *   **MANDATORY:** Whenever the user provides new requirements or changes to the data model (e.g., modified SQL transformation logic, joins, filtering criteria, or projected fields), you **MUST** update or expand the corresponding Python unit tests.
 
+*   **Iceberg products:** If this product is (or is being switched to) Iceberg output, follow the [materialize-as-iceberg](../materialize_as_iceberg/SKILL.md) skill for the materialization body, `--vars` injection, incremental/full-refresh behavior, and the CI `--timeout` rules — do not hand-roll Iceberg DDL.
 
 ---
 
