@@ -46,7 +46,7 @@ LEFT JOIN ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "vbkd")} AS vbkd_hdr
   AND vbkd_hdr.vbeln = sdh.document_number_vbeln
   AND vbkd_hdr.posnr = '000000'
 ${sql_helper.buildDynamicWhere([
-  incremental.getFilter(ctx, ["sdh"])
+  incremental.getFilter(ctx, ["sdh.source_last_updated_at"])
 ])}
 `,
 );
