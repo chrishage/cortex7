@@ -30,7 +30,9 @@ Task arrives
     │
     ├── Asked to generate ER diagrams or data model graphs? ────→ generate-er-diagram
     │
-    └── Asked to align/review model against business rules? ────→ data-modeling-standards
+    ├── Asked to align/review model against business rules? ────→ data-modeling-standards
+    │
+    └── Asked to output a product as Iceberg / for Databricks? ─→ materialize-as-iceberg    
 ```
 
 ---
