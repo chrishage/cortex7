@@ -1,0 +1,44 @@
+fields:
+  - name: client_mandt
+    description: 'client_mandt'
+  - name: material_number_matnr
+    description: 'material_number_matnr'
+  - name: sales_organization_vkorg
+    description: 'sales_organization_vkorg'
+  - name: distribution_channel_vtweg
+    description: 'distribution_channel_vtweg'
+  - name: distr_chain_material_status_vmsta
+    description: 'distr_chain_material_status_vmsta'
+  - name: distr_chain_material_status_valid_from_vmstd
+    description: 'distr_chain_material_status_valid_from_vmstd'
+  - name: delivering_plant_dwerk
+    description: 'delivering_plant_dwerk'
+  - name: material_pricing_group_kondm
+    description: 'material_pricing_group_kondm'
+  - name: material_statistics_group_versg
+    description: 'material_statistics_group_versg'
+  - name: product_hierarchy_prodh
+    description: 'product_hierarchy_prodh'
+  - name: material_group_1_mvgr1
+    description: 'material_group_1_mvgr1'
+  - name: material_group_2_mvgr2
+    description: 'material_group_2_mvgr2'
+  - name: material_group_3_mvgr3
+    description: 'material_group_3_mvgr3'
+  - name: material_group_4_mvgr4
+    description: 'material_group_4_mvgr4'
+  - name: material_group_5_mvgr5
+    description: 'material_group_5_mvgr5'
+  - name: sales_unit_vrkme
+    description: 'sales_unit_vrkme'
+  - name: item_category_group_mtpos
+    description: 'item_category_group_mtpos'
+  - name: account_assignment_group_ktgrm
+    description: 'account_assignment_group_ktgrm'
+  - name: deletion_flag_lvorm
+    description: 'deletion_flag_lvorm'
+  - name: source_last_updated_at
+    description: 'Auditoria de carga (patrón Cortex).'
+  - name: bq_loaded_at
+    description: 'Auditoria de carga (patrón Cortex).'
+

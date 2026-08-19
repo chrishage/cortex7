@@ -39,6 +39,83 @@ In the product's `definitions/*.js`, require the helper with a namespaced import
 
 ---
 
+## Phase 1.5: Product Wiring — the FOUR things that must line up (READ THIS FIRST)
+
+> **Why this phase exists.** A batch of new products was created where `cortex-build` reported "Successfully built" for every one, yet none materialized as Iceberg — some produced "No actions to run", some threw `TypeError: undefined datasetId`, and some silently created **native** BigQuery tables (correct row counts, wrong format). Every one of these failures traced back to one of the four wiring points below being inconsistent. A green `cortex-build` does **NOT** mean the product is wired correctly. Verify all four before running.
+
+For a source-aligned product that reads a raw SAP table, **four files must agree**. Use the working example `sales_documents_ext` (and, for a simple single-table product, `sales_groups`) as the template — copy its shape rather than inventing one.
+
+### 1. `manifest.yaml` — the raw dependency key MUST be `sapRaw`
+The `sap_product` builder resolves the raw source by looking up the dependency under the key **`sapRaw`**. If the manifest declares it under any other name (a common wrong value is `sapModule`), the builder can't find the source and the product is dropped from the graph — `dataform run --actions <product>` then says **"No actions to run"** and no table is ever created.
+
+```yaml
+# manifest.yaml — CORRECT
+dependencies:
+  sapRaw:                       # <-- MUST be sapRaw, never sapModule
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions: [ecc, s4]
+    tables:
+      common: [<raw_table>]     # e.g. tvgrt
+builder: sap_product
+```
+
+### 2. `config.yaml` — the `dependencyBindings` key MUST match the manifest (`sapRaw: erp`)
+The binding under the product's `moduleId` must use the **same** key as the manifest. If the manifest says `sapRaw` but the binding still says `sapModule`, `cortex-build` fails validation with:
+`Product module '<p>' requires dependency 'sapRaw' ... but 'sapRaw' is missing from 'dependencyBindings'`.
+
+```yaml
+# config.yaml — under this product's moduleId
+        dependencyBindings:
+          sapRaw: erp           # <-- same key as the manifest
+```
+**Edit this line surgically per product.** Never do a global find/replace of `sapModule`→`sapRaw` in `config.yaml` — the standard `cortex.*` products legitimately use `sapModule: erp` and must stay untouched.
+
+### 3. `definitions/<product>.js` — reference `moduleConfig.sources.sapRaw` and DON'T wrap `ctx.ref()` in back-ticks
+Two mistakes live on the `FROM` line:
+
+*   The source lookup must be `moduleConfig.sources.**sapRaw**.datasetId` (matching the manifest key). If it still says `sapModule`, `moduleConfig.sources.sapModule` is `undefined` and compile throws `TypeError: Cannot read properties of undefined (reading 'datasetId')`.
+*   `ctx.ref(...)` **already returns a back-tick-quoted reference**. Wrapping it again in manual back-ticks produces a **double back-tick** and BigQuery fails at run time with `Syntax error: Invalid empty identifier`. This error does NOT appear at compile — only when the table actually runs.
+
+```javascript
+// CORRECT — no manual back-ticks, key is sapRaw
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "tvgrt")} AS tvgrt
+
+// WRONG — double back-tick + wrong key
+FROM \`${ctx.ref(moduleConfig.sources.sapModule.datasetId, "tvgrt")}\` AS tvgrt
+```
+
+### 4. `table_settings.default.yaml` — MUST use the versioned Cortex format with a `bigquery.iceberg` block
+This is the switch that turns Iceberg on. `isIceberg()` returns true only when the loaded `tableConfig` contains `bigquery.iceberg.bucketName`. That value comes from `table_settings.default.yaml`, and the builder only reads it when the file uses the **versioned** layout (top-level `ecc:` / `s4:` keys → table name → settings). A made-up layout like `tables: { common: [...] }` is silently ignored: the build logs **`Loaded 0 table configurations for <product>`**, `isIceberg` is false, and the product materializes as a **native** table with the right rows but no Iceberg format.
+
+```yaml
+# table_settings.default.yaml — CORRECT (versioned; iceberg block under s4)
+ecc:
+  <product>:
+    materializationType: incremental
+    # bigQueryLabels / dataformTags as per data_modeling_standards
+s4:
+  <product>:
+    materializationType: incremental
+    bigquery:
+      iceberg:
+        connection: <proj>.<LOCATION>.<connection_name>   # e.g. tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: <iceberg_bucket>                       # e.g. tra-cortex-iceberg-dev
+        fileFormat: PARQUET
+```
+
+**The one-line proof that all four are right:** the build log shows **`Loaded 1 table configurations for <product>`** (N ≥ 1, never 0). If it says `Loaded 0`, the `table_settings.default.yaml` is in the wrong format — fix it before going further.
+
+### Anti-regression rule (applies to every product, Iceberg or not)
+`cortex-build` "Successfully built" is not proof. Before declaring a product done, in order:
+1. Build log shows `Loaded N table configurations` with **N ≥ 1**.
+2. `dataform compile --json | Select-String "<raw_table>"` shows the `FROM` with a **single** back-tick (not `` `` ``).
+3. A **real** `dataform run` (not `--dry-run`, not compile) completes — for incremental Iceberg it emits **three** jobIds (CREATE IF NOT EXISTS + MERGE + EXPORT METADATA).
+4. `TABLE_OPTIONS` shows `table_format = "ICEBERG"` **and** a `storage_uri` — a populated table with an empty `TABLE_OPTIONS` means it materialized native, not Iceberg.
+
+> **Re-running after a native mistake:** if a product first materialized as a native table, the incremental helper's `CREATE TABLE IF NOT EXISTS` will see the existing table and NOT recreate it as Iceberg. `DROP TABLE` the native table first, then run again with the corrected `table_settings`.
+
+---
+
 ## Phase 2: Storage URI, Bucket & Connection Conventions
 
 ### Hierarchical bucket layout (MANDATORY)
@@ -124,9 +201,10 @@ dataform run $ACTIONS_<GROUP> --timeout=30m "--vars=icebergBucket=$ICEBERG_BUCKE
 
 ## Phase 6: Quality Gate & Validation
 
-Run the standard quality gate from `create-data-product` / `update-data-product` (build, validate, pytest), plus Iceberg-specific checks:
+Run the standard quality gate from `create-data-product` / `update-data-product` (build, validate, pytest), plus Iceberg-specific checks. **First clear all four wiring checks in Phase 1.5** — most "it built but isn't Iceberg" failures are caught there, not here.
 
-1.  **Compile check:** after `cortex-build`, confirm the hierarchical path resolves. It resolves at dataform-compile time (not at cortex-build): `cd build_out; dataform compile --json | Select-String "cortex_data_products"`.
+0.  **Table-config check (catches the silent-native failure):** in the `cortex-build` log, confirm `Loaded N table configurations for <product>` with **N ≥ 1**. `Loaded 0` means `table_settings.default.yaml` is in the wrong format and the product will materialize native — fix before continuing.
+1.  **Compile check:** after `cortex-build`, confirm the hierarchical path resolves. It resolves at dataform-compile time (not at cortex-build): `cd build_out; dataform compile --json | Select-String "cortex_data_products"`. Also confirm the `FROM` uses a **single** back-tick (a double back-tick `` `` `` means a manual back-tick was wrapped around `ctx.ref()` — see Phase 1.5 §3).
 2.  **Isolated materialization:** run the Iceberg action(s) alone with the quoted `--vars` and confirm real bytes are written and `EXPORT TABLE METADATA` succeeds.
 3.  **Group run:** run the action inside its full CI group to confirm it is NOT cut by the run timeout (all actions, including trailing `_ext`, appear in the log).
 4.  **Verify storage_uri on the live table:**

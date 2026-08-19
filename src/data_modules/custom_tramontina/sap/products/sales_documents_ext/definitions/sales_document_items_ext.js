@@ -36,10 +36,12 @@ SELECT
   COALESCE(vbkd_item.bzirk, vbkd_hdr.bzirk) AS sales_district_bzirk,
   COALESCE(vbkd_item.inco1, vbkd_hdr.inco1) AS incoterms_classification_inco1,
   COALESCE(vbkd_item.zterm, vbkd_hdr.zterm) AS customer_payment_terms_zterm,
+  vbap.sgt_rcat AS requirement_segment_sgt_rcat,
   GREATEST(
     IFNULL(sdi.source_last_updated_at, TIMESTAMP('1900-01-01 00:00:00+00')),
     IFNULL(vbkd_item.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')),
-    IFNULL(vbkd_hdr.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
+    IFNULL(vbkd_hdr.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')),
+    IFNULL(vbap.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
   ) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
 FROM \`${dataform.projectConfig.vars.dataProject || moduleConfig.targetProjectId}.data_products.sales_document_items\` AS sdi
@@ -51,6 +53,10 @@ LEFT JOIN ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "vbkd")} AS vbkd_hdr
   ON  vbkd_hdr.mandt = sdi.client_mandt
   AND vbkd_hdr.vbeln = sdi.document_number_vbeln
   AND vbkd_hdr.posnr = '000000'
+LEFT JOIN ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "vbap")} AS vbap
+  ON  vbap.mandt = sdi.client_mandt
+  AND vbap.vbeln = sdi.document_number_vbeln
+  AND vbap.posnr = sdi.item_number_posnr
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["sdi.source_last_updated_at"])
 ])}

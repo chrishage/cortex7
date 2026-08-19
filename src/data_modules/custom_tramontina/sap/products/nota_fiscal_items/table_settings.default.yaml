@@ -1,0 +1,4 @@
+tables:
+  common:
+    - tableName: nota_fiscal_items
+      materializationType: incremental

@@ -1,0 +1,15 @@
+displayName: Sales Districts
+description: Sales Districts
+category: source_aligned_product
+type: sales_districts
+dependencies:
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - t171t
+
+builder: sap_product

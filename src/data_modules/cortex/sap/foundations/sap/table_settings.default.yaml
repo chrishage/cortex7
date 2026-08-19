@@ -330,6 +330,42 @@ ecc:
     dataformTags: [sap, foundation, sales, sap_sd, hourly]
 common:
 - source:
+    tableName: tvgrt
+  target: {}
+- source:
+    tableName: tvkbt
+  target: {}
+- source:
+    tableName: t171t
+  target: {}
+- source:
+    tableName: tvfkt
+  target: {}
+- source:
+    tableName: t052u
+  target: {}
+- source:
+    tableName: tinc
+  target: {}
+- source:
+    tableName: tinct
+  target: {}
+- source:
+    tableName: mvke
+  target: {}
+- source:
+    tableName: knvv
+  target: {}
+- source:
+    tableName: j_1bnfdoc
+  target: {}
+- source:
+    tableName: j_1bnfe_active
+  target: {}
+- source:
+    tableName: j_1bnflin
+  target: {}
+- source:
     tableName: adr6
   target:
     bigQueryLabels:
@@ -816,6 +852,7 @@ common:
     dataformTags: [sap, foundation, finance, sap_co, daily]
 - source:
     tableName: kna1
+  target: {}
   target:
     bigQueryLabels:
     - key: line_of_business

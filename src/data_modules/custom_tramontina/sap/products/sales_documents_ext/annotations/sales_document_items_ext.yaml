@@ -19,3 +19,5 @@ fields:
     description: Source Last Updated At
   - name: bq_loaded_at
     description: BigQuery Loaded At
+  - name: requirement_segment_sgt_rcat
+    description: 'Requirement Segment (SGT_RCAT)'
