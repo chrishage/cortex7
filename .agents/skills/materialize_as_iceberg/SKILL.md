@@ -197,11 +197,23 @@ Every `dataform run` job line follows this shape (note the quoted `--vars` and t
 dataform run $ACTIONS_<GROUP> --timeout=30m "--vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION" --default-location $BQ_LOCATION
 ```
 
+### 5.4 A new product must be REGISTERED in the CI `ACTIONS_*` variables — otherwise it never runs
+Correct product files in the repo are **not enough** for the pipeline to materialize them. The `.gitlab-ci.yml` runs `dataform run $ACTIONS_<GROUP>`, where each `ACTIONS_<GROUP>` variable is a hard-coded list of `--actions <name>`. A product that is not named in any `ACTIONS_*` list is simply never executed — and the pipeline still reports **success** for the group, because it did exactly what it was told (nothing, for that product). This is a distinct failure from the timeout skip in 5.2: here the action was never queued at all.
+
+Symptom to recognize: the CI job is green, but the product's table does not exist in `data_products` (a `TABLES`/`TABLE_OPTIONS` query returns nothing for it). "Jobs succeeded" is NOT proof of materialization — only the table existing in the target dataset is.
+
+When adding a new product:
+*   Add `--actions <name>` to the appropriate `ACTIONS_*` group (create a new group variable + its dev/prod jobs if none fits).
+*   **Action name for a custom single-definition product is the PLAIN product name** (e.g. `sales_districts`, `billing_document_types`, `customers_ext`), confirmed via `dataform compile --json` (`target.name`). This is NOT the `<moduleId>_<tableName>` pattern used by multi-table cortex products (e.g. `sap_customers_customers`) or by multi-table `_ext` products (e.g. `sales_documents_ext_sales_document_headers_ext`). Read the compiled `target.name` — never guess the action name.
+*   Put high-volume products (e.g. Nota Fiscal headers/items, millions of rows) in their **own** group so their timeout budget is independent of the light master-data group.
+
 ---
 
 ## Phase 6: Quality Gate & Validation
 
 Run the standard quality gate from `create-data-product` / `update-data-product` (build, validate, pytest), plus Iceberg-specific checks. **First clear all four wiring checks in Phase 1.5** — most "it built but isn't Iceberg" failures are caught there, not here.
+
+> **Always rebuild before running after editing `src/`.** `dataform run` and `dataform compile` execute what is in **`build_out/`**, not what is in `src/`. If you edit a product's `.js`/manifest/`table_settings` and then run without rebuilding, you are running the OLD compiled code — you will reproduce errors you already fixed in the source (e.g. a double-back-tick `FROM` that is correct in `src` but stale in `build_out`, giving a spurious `Invalid empty identifier`). The fix is not another source edit — it is `Remove-Item -Recurse -Force build_out; uv run cortex-build ...` then re-run. Confirm the intended change is present in the fresh compile (e.g. `dataform compile --json | Select-String "<raw_table>"` shows a single back-tick) before blaming the source.
 
 0.  **Table-config check (catches the silent-native failure):** in the `cortex-build` log, confirm `Loaded N table configurations for <product>` with **N ≥ 1**. `Loaded 0` means `table_settings.default.yaml` is in the wrong format and the product will materialize native — fix before continuing.
 1.  **Compile check:** after `cortex-build`, confirm the hierarchical path resolves. It resolves at dataform-compile time (not at cortex-build): `cd build_out; dataform compile --json | Select-String "cortex_data_products"`. Also confirm the `FROM` uses a **single** back-tick (a double back-tick `` `` `` means a manual back-tick was wrapped around `ctx.ref()` — see Phase 1.5 §3).
