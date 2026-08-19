@@ -34,5 +34,9 @@ FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "t052u")} AS t052u
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["t052u"])
 ])}
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY t052u.mandt, t052u.zterm, t052u.spras
+  ORDER BY IFNULL(t052u.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) DESC, t052u.ztagg
+) = 1
   `
 );
