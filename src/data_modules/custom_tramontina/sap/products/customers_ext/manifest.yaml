@@ -1,0 +1,17 @@
+displayName: Customers Ext
+description: Ampliação do customers standard
+category: consumption_product
+type: customers_ext
+dependencies:
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - kna1
+
+  sapCustomers:
+    modulePath: cortex.sap.products.customers
+builder: sap_product

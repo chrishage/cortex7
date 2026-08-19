@@ -1,0 +1,16 @@
+displayName: Nota Fiscal Headers
+description: Nota Fiscal Headers
+category: source_aligned_product
+type: nota_fiscal_headers
+dependencies:
+  sapModule:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - j_1bnfdoc
+        - j_1bnfe_active
+
+builder: sap_product

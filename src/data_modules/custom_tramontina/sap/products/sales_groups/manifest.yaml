@@ -1,0 +1,14 @@
+﻿displayName: Sales Groups
+description: Sales Groups
+category: source_aligned_product
+type: sales_groups
+dependencies:
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - tvgrt
+builder: sap_product

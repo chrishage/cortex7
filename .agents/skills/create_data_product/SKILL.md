@@ -64,6 +64,7 @@ Use the template found at: [annotations.yaml.md](assets/annotations.yaml.md)
 Use the template snippets found at: [definitions.js.md](assets/definitions.js.md)
 *Note: Refer to [style_guide.md](references/style_guide.md) for Folder Structure Rules, Field Naming Conventions, and Coding Guidelines.*
 *   **Excluded System Fields (`_dataaging`):** You **MUST** exclude the SAP S/4HANA internal system field `_dataaging` in accordance with the [Data Modeling Standards](../data_modeling_standards/SKILL.md) guide.
+*   **Iceberg output (external engines / Databricks):** If this product must be readable outside BigQuery (e.g. by Databricks), do **NOT** use standard `publish()`. Follow the [materialize-as-iceberg](../materialize_as_iceberg/SKILL.md) skill to publish it as an Apache Iceberg managed (BigLake) table via the `iceberg_helper` (`publishProduct`), using the hierarchical GCS bucket layout and the quoted `--vars` injection. Confirm with the user first whether Iceberg is actually required.
 
 ### 5. `test_[data_product_name].py` (`tests/unit/<namespace>/`)
 **MANDATORY:** Immediately invoke the `create-python-tests` skill to generate the complete `pytest` unit test suite for the data product. Follow its workflow to incorporate all assertions for join criteria, filtering logic, and projected columns identified during your Planning phase. **Whenever the user provides new requirements or changes to the data model during iteration, you MUST update the corresponding Python unit test file for the data product accordingly.**
