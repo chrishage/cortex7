@@ -1,0 +1,44 @@
+fields:
+  - name: client_mandt
+    description: 'client_mandt'
+  - name: nota_fiscal_document_docnum
+    description: 'nota_fiscal_document_docnum'
+  - name: company_code_bukrs
+    description: 'company_code_bukrs'
+  - name: billing_document_belnr
+    description: 'billing_document_belnr'
+  - name: nota_fiscal_number_nfnum
+    description: 'nota_fiscal_number_nfnum'
+  - name: nota_fiscal_type_nftype
+    description: 'nota_fiscal_type_nftype'
+  - name: document_date_docdat
+    description: 'document_date_docdat'
+  - name: nfe_number_nfenum
+    description: 'nfe_number_nfenum'
+  - name: cancel_flag_cancel
+    description: 'cancel_flag_cancel'
+  - name: nfe_model_model
+    description: 'nfe_model_model'
+  - name: nfe_series_serie
+    description: 'nfe_series_serie'
+  - name: nfe_document_status_docsta
+    description: 'nfe_document_status_docsta'
+  - name: nfe_authorization_protocol_authcod
+    description: 'nfe_authorization_protocol_authcod'
+  - name: nfe_authorization_date_authdate
+    description: 'nfe_authorization_date_authdate'
+  - name: nfe_environment_type_tpamb
+    description: 'nfe_environment_type_tpamb'
+  - name: nfe_emission_type_tpemis
+    description: 'nfe_emission_type_tpemis'
+  - name: nfe_access_key
+    description: 'nfe_access_key'
+  - name: currency_waerk
+    description: 'currency_waerk'
+  - name: region_regio
+    description: 'region_regio'
+  - name: source_last_updated_at
+    description: 'Auditoria de carga (patrón Cortex).'
+  - name: bq_loaded_at
+    description: 'Auditoria de carga (patrón Cortex).'
+

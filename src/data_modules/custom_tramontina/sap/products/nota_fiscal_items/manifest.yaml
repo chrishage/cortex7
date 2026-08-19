@@ -1,0 +1,15 @@
+displayName: Nota Fiscal Items
+description: Nota Fiscal Items
+category: source_aligned_product
+type: nota_fiscal_items
+dependencies:
+  sapModule:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - j_1bnflin
+
+builder: sap_product

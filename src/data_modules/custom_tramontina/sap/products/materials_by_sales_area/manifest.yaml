@@ -1,0 +1,15 @@
+displayName: Materials by Sales Area
+description: Materials by Sales Area
+category: source_aligned_product
+type: materials_by_sales_area
+dependencies:
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - mvke
+
+builder: sap_product
