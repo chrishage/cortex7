@@ -1,5 +1,5 @@
-﻿displayName: Sales Groups
-description: Sales Groups
+displayName: sales_groups
+description: sales_groups
 category: source_aligned_product
 type: sales_groups
 dependencies:
@@ -10,5 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - tvgrt
+        - TVGRT
+
 builder: sap_product

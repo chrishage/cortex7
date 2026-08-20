@@ -1,5 +1,5 @@
-displayName: Incoterms
-description: Incoterms
+displayName: incoterms
+description: incoterms
 category: source_aligned_product
 type: incoterms
 dependencies:
@@ -10,7 +10,7 @@ dependencies:
       - s4
     tables:
       common:
-        - tinct
-        - tinc
+        - TINCT
+        - TINC
 
 builder: sap_product

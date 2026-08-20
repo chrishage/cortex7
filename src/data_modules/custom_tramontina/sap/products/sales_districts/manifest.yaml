@@ -1,5 +1,5 @@
-displayName: Sales Districts
-description: Sales Districts
+displayName: sales_districts
+description: sales_districts
 category: source_aligned_product
 type: sales_districts
 dependencies:
@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - t171t
+        - T171T
 
 builder: sap_product

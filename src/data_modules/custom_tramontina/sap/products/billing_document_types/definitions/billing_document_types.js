@@ -1,38 +1,22 @@
-// ___MODULE_CONTEXT___
-// ___TABLE_CONFIG___
+const custom_tramontina = require("../../../../../custom_tramontina");
 
-const moduleConfig = config.product[moduleContext.moduleId];
-const materializationType = tableConfig.materializationType || "incremental";
-const incremental = require("includes/incremental.js");
-const publish_config = require("includes/publish_config.js");
-const sql_helper = require("includes/sql_helper.js");
-const iceberg_helper = require("includes/iceberg_helper.js");
-
-const publishConfig = publish_config.getPublishConfig(
-  materializationType,
-  tableConfig,
-  moduleConfig,
-  ['client_mandt', 'billing_type_fkart', 'language_key_spras']
-);
-
-iceberg_helper.publishProduct(
-  tableConfig.tableName,
-  publishConfig,
-  tableConfig,
-  (ctx) => `
+custom_tramontina.publishProduct({
+  name: "billing_document_types",
+  type: "incremental",
+  schema: "data_products",
+  dependencies: ["sapRaw"],
+  query: (
+    ctx
+  ) => `
 SELECT
-  tvfkt.mandt AS client_mandt,
-  tvfkt.fkart AS billing_type_fkart,
-  tvfkt.spras AS language_key_spras,
-  tvfkt.vtext AS billing_type_name_vtext,
-  IFNULL(
-    tvfkt.recordstamp,
-    TIMESTAMP('1900-01-01 00:00:00+00')
-  ) AS source_last_updated_at,
+  mandt AS client_mandt,
+  fkart AS billing_type_fkart,
+  spras AS language_key_spras,
+  vtext AS billing_type_name_vtext,
+  CURRENT_TIMESTAMP() AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "tvfkt")} AS tvfkt
-${sql_helper.buildDynamicWhere([
-  incremental.getFilter(ctx, ["tvfkt"])
-])}
+FROM
+  ${ctx.ref("sapRaw", "TVFKT")}
+QUALIFY ROW_NUMBER() OVER (PARTITION BY mandt, fkart, spras ORDER BY IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) DESC) = 1
   `
-);
+});
