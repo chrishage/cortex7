@@ -38,7 +38,7 @@ LEFT JOIN (
   ON TINCT.mandt = TINC.mandt AND TINCT.inco1 = TINC.inco1
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["tinct", "tinc"])
+, "TINCT.mandt = '400'"
 ])}
-AND TINCT.mandt = '400'
   `
 );

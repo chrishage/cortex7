@@ -31,7 +31,7 @@ SELECT
 FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "tvfkt")}
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["tvfkt"])
+, "mandt = '400'"
 ])}
-AND mandt = '400'
   `
 );
