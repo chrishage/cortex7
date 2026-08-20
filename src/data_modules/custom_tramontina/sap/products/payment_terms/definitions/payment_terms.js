@@ -28,7 +28,7 @@ SELECT
   text1 AS terms_of_payment_name_vtext,
   IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "t052u")}
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "t052u")} AS t052u
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["t052u"])
 , "mandt = '400'"

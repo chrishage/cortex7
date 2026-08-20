@@ -43,7 +43,7 @@ SELECT
   lvorm AS deletion_flag_lvorm,
   IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "mvke")}
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "mvke")} AS mvke
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["mvke"])
 , "mandt = '400'"

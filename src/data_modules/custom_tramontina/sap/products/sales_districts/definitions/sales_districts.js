@@ -28,7 +28,7 @@ SELECT
   bztxt AS sales_district_name_bztxt,
   IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "t171t")}
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "t171t")} AS t171t
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["t171t"])
 , "mandt = '400'"

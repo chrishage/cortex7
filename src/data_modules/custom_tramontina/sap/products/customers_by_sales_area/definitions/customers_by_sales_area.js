@@ -47,7 +47,7 @@ SELECT
   loevm AS deletion_flag_loevm,
   IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "knvv")}
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "knvv")} AS knvv
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["knvv"])
 , "mandt = '400'"
