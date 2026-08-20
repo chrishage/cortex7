@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - TVFKT
+        - tvfkt
 
 builder: sap_product

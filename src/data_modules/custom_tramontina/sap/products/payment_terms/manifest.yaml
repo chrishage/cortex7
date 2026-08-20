@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - T052U
+        - t052u
 
 builder: sap_product
