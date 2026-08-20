@@ -1,5 +1,5 @@
-displayName: Billing Document Types
-description: Billing Document Types
+displayName: billing_document_types
+description: billing_document_types
 category: source_aligned_product
 type: billing_document_types
 dependencies:
@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - tvfkt
+        - TVFKT
 
 builder: sap_product

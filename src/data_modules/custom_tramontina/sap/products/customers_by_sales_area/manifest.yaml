@@ -1,5 +1,5 @@
-displayName: Customers by Sales Area
-description: Customers by Sales Area
+displayName: customers_by_sales_area
+description: customers_by_sales_area
 category: source_aligned_product
 type: customers_by_sales_area
 dependencies:
@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - knvv
+        - KNVV
 
 builder: sap_product

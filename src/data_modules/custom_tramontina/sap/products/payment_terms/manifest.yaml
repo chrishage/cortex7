@@ -1,5 +1,5 @@
-displayName: Payment Terms
-description: Payment Terms
+displayName: payment_terms
+description: payment_terms
 category: source_aligned_product
 type: payment_terms
 dependencies:
@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - t052u
+        - T052U
 
 builder: sap_product

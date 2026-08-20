@@ -75,8 +75,8 @@ variables:
     --actions customers_by_sales_area
     --actions customers_ext
   ACTIONS_NOTAS_FISCAIS: >-
-    # --actions nota_fiscal_headers
-    # --actions nota_fiscal_items
+    --actions nota_fiscal_headers
+    --actions nota_fiscal_items
 
 .setup: &setup
   - echo "$SA_KEY_B64" | base64 -d > /tmp/sa-key.json
@@ -163,7 +163,21 @@ dev_supply_tx:
 
 dev_run_masterdata_custom:
   <<: *dev_base
-  script: [ *setup, "cd build_out", "dataform run $ACTIONS_MASTERDATA_CUSTOM --timeout=30m \"--vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION\" --default-location $BQ_LOCATION" ]
+  script:
+    - *setup
+    - "cd build_out"
+    - "dataform run $ACTIONS_MASTERDATA_CUSTOM --timeout=30m \"--vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION\" --default-location $BQ_LOCATION"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+
+dev_run_notas_fiscais:
+  <<: *dev_base
+  script:
+    - *setup
+    - "cd build_out"
+    - "dataform run $ACTIONS_NOTAS_FISCAIS --timeout=30m \"--vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION\" --default-location $BQ_LOCATION"
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
       when: manual
@@ -216,3 +230,9 @@ prod_run_masterdata_custom:
   script: [ *setup, "cd build_out", "dataform run $ACTIONS_MASTERDATA_CUSTOM --timeout=30m \"--vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION\" --default-location $BQ_LOCATION" ]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "masterdata_custom"'
+
+prod_run_notas_fiscais:
+  <<: *prod_base
+  script: [ *setup, "cd build_out", "dataform run $ACTIONS_NOTAS_FISCAIS --timeout=30m \"--vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION\" --default-location $BQ_LOCATION" ]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_GROUP == "notas_fiscais"'

@@ -1,5 +1,5 @@
-displayName: Materials by Sales Area
-description: Materials by Sales Area
+displayName: materials_by_sales_area
+description: materials_by_sales_area
 category: source_aligned_product
 type: materials_by_sales_area
 dependencies:
@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - mvke
+        - MVKE
 
 builder: sap_product
