@@ -38,7 +38,7 @@ SELECT
   j_1bnfe_active.tpamb AS nfe_environment_type_tpamb,
   j_1bnfe_active.tpemis AS nfe_emission_type_tpemis,
   j_1bnfe_active.regio || j_1bnfe_active.nfyear || j_1bnfe_active.nfmonth || j_1bnfe_active.stcd1 || j_1bnfe_active.model || j_1bnfe_active.serie || j_1bnfe_active.nfnum9 || j_1bnfe_active.docnum9 || j_1bnfe_active.cdv AS nfe_access_key,
-  j_1bnfe_active.waerk AS currency_waerk,
+  j_1bnfdoc.waerk AS currency_waerk,
   j_1bnfe_active.regio AS region_regio,
   GREATEST(
     IFNULL(j_1bnfdoc.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')), IFNULL(j_1bnfe_active.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
