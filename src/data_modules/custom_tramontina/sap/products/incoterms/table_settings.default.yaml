@@ -1,29 +1,8 @@
-# Copyright 2026 Tramontina S.A.
-# Table Settings for incoterms
-ecc:
-  incoterms:
-    materializationType: incremental
-    bigQueryLabels:
-    - key: line_of_business
-      value: sales
-    - key: sap_module
-      value: sap_sd
-    - key: data_class
-      value: master
-    dataformTags: [sap, sales, sap_sd, custom_tramontina, master, hourly]
 s4:
-  incoterms:
-    materializationType: incremental
-    bigQueryLabels:
-    - key: line_of_business
-      value: sales
-    - key: sap_module
-      value: sap_sd
-    - key: data_class
-      value: master
-    dataformTags: [sap, sales, sap_sd, custom_tramontina, master, hourly]
-    bigquery:
-      iceberg:
-        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
-        bucketName: tra-cortex-iceberg-dev
-        fileFormat: PARQUET
+  connection: "DEFAULT"
+  bucketName: "${icebergBucket}"
+  fileFormat: "PARQUET"
+ecc:
+  connection: "DEFAULT"
+  bucketName: "${icebergBucket}"
+  fileFormat: "PARQUET"
