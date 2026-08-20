@@ -35,7 +35,6 @@ SELECT
   j_1bnflin.netins AS insurance_netins,
   j_1bnflin.netoth AS other_expenses_netoth,
   j_1bnflin.refkey AS billing_document_refkey,
-  j_1bnflin.bukrs AS company_code_bukrs,
   IFNULL(
     j_1bnflin.recordstamp,
     TIMESTAMP('1900-01-01 00:00:00+00')
