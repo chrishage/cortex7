@@ -28,7 +28,7 @@ SELECT
   vtext AS billing_type_name_vtext,
   IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "tvfkt")}
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "tvfkt")} AS tvfkt
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["tvfkt"])
 , "mandt = '400'"
