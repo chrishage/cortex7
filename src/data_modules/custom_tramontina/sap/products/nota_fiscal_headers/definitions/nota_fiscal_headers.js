@@ -37,7 +37,7 @@ SELECT
   j_1bnfe_active.authdate AS nfe_authorization_date_authdate,
   j_1bnfe_active.tpamb AS nfe_environment_type_tpamb,
   j_1bnfe_active.tpemis AS nfe_emission_type_tpemis,
-  j_1bnfe_active.regio || nfyear || nfmonth || stcd1 || model || serie || nfnum9 || docnum9 || cdv AS nfe_access_key,
+  j_1bnfe_active.regio || j_1bnfe_active.nfyear || j_1bnfe_active.nfmonth || j_1bnfe_active.stcd1 || j_1bnfe_active.model || j_1bnfe_active.serie || j_1bnfe_active.nfnum9 || j_1bnfe_active.docnum9 || j_1bnfe_active.cdv AS nfe_access_key,
   j_1bnfe_active.waerk AS currency_waerk,
   j_1bnfe_active.regio AS region_regio,
   GREATEST(
