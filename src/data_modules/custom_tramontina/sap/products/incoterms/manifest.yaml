@@ -1,4 +1,16 @@
-type: incoterms
+displayName: incoterms
+description: incoterms
 category: source_aligned_product
+type: incoterms
 dependencies:
-  - sapRaw
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - TINCT
+        - TINC
+
+builder: sap_product

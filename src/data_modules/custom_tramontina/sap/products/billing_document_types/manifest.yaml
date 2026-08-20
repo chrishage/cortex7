@@ -1,4 +1,15 @@
-type: billing_document_types
+displayName: billing_document_types
+description: billing_document_types
 category: source_aligned_product
+type: billing_document_types
 dependencies:
-  - sapRaw
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - TVFKT
+
+builder: sap_product

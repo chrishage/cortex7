@@ -1,4 +1,15 @@
-type: customers_by_sales_area
+displayName: customers_by_sales_area
+description: customers_by_sales_area
 category: source_aligned_product
+type: customers_by_sales_area
 dependencies:
-  - sapRaw
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - KNVV
+
+builder: sap_product

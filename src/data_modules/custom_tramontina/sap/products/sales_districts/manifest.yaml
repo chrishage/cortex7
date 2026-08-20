@@ -1,4 +1,15 @@
-type: sales_districts
+displayName: sales_districts
+description: sales_districts
 category: source_aligned_product
+type: sales_districts
 dependencies:
-  - sapRaw
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - T171T
+
+builder: sap_product

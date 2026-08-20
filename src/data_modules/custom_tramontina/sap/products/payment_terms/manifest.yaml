@@ -1,4 +1,15 @@
-type: payment_terms
+displayName: payment_terms
+description: payment_terms
 category: source_aligned_product
+type: payment_terms
 dependencies:
-  - sapRaw
+  sapRaw:
+    modulePath: cortex.sap.foundations.sap
+    supportedVersions:
+      - ecc
+      - s4
+    tables:
+      common:
+        - T052U
+
+builder: sap_product
