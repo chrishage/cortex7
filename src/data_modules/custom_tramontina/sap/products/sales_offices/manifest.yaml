@@ -1,15 +1,4 @@
-displayName: Sales Offices
-description: Sales Offices
-category: source_aligned_product
 type: sales_offices
+category: source_aligned_product
 dependencies:
-  sapRaw:
-    modulePath: cortex.sap.foundations.sap
-    supportedVersions:
-      - ecc
-      - s4
-    tables:
-      common:
-        - tvkbt
-
-builder: sap_product
+  - sapRaw
