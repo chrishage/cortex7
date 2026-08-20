@@ -39,83 +39,6 @@ In the product's `definitions/*.js`, require the helper with a namespaced import
 
 ---
 
-## Phase 1.5: Product Wiring — the FOUR things that must line up (READ THIS FIRST)
-
-> **Why this phase exists.** A batch of new products was created where `cortex-build` reported "Successfully built" for every one, yet none materialized as Iceberg — some produced "No actions to run", some threw `TypeError: undefined datasetId`, and some silently created **native** BigQuery tables (correct row counts, wrong format). Every one of these failures traced back to one of the four wiring points below being inconsistent. A green `cortex-build` does **NOT** mean the product is wired correctly. Verify all four before running.
-
-For a source-aligned product that reads a raw SAP table, **four files must agree**. Use the working example `sales_documents_ext` (and, for a simple single-table product, `sales_groups`) as the template — copy its shape rather than inventing one.
-
-### 1. `manifest.yaml` — the raw dependency key MUST be `sapRaw`
-The `sap_product` builder resolves the raw source by looking up the dependency under the key **`sapRaw`**. If the manifest declares it under any other name (a common wrong value is `sapModule`), the builder can't find the source and the product is dropped from the graph — `dataform run --actions <product>` then says **"No actions to run"** and no table is ever created.
-
-```yaml
-# manifest.yaml — CORRECT
-dependencies:
-  sapRaw:                       # <-- MUST be sapRaw, never sapModule
-    modulePath: cortex.sap.foundations.sap
-    supportedVersions: [ecc, s4]
-    tables:
-      common: [<raw_table>]     # e.g. tvgrt
-builder: sap_product
-```
-
-### 2. `config.yaml` — the `dependencyBindings` key MUST match the manifest (`sapRaw: erp`)
-The binding under the product's `moduleId` must use the **same** key as the manifest. If the manifest says `sapRaw` but the binding still says `sapModule`, `cortex-build` fails validation with:
-`Product module '<p>' requires dependency 'sapRaw' ... but 'sapRaw' is missing from 'dependencyBindings'`.
-
-```yaml
-# config.yaml — under this product's moduleId
-        dependencyBindings:
-          sapRaw: erp           # <-- same key as the manifest
-```
-**Edit this line surgically per product.** Never do a global find/replace of `sapModule`→`sapRaw` in `config.yaml` — the standard `cortex.*` products legitimately use `sapModule: erp` and must stay untouched.
-
-### 3. `definitions/<product>.js` — reference `moduleConfig.sources.sapRaw` and DON'T wrap `ctx.ref()` in back-ticks
-Two mistakes live on the `FROM` line:
-
-*   The source lookup must be `moduleConfig.sources.**sapRaw**.datasetId` (matching the manifest key). If it still says `sapModule`, `moduleConfig.sources.sapModule` is `undefined` and compile throws `TypeError: Cannot read properties of undefined (reading 'datasetId')`.
-*   `ctx.ref(...)` **already returns a back-tick-quoted reference**. Wrapping it again in manual back-ticks produces a **double back-tick** and BigQuery fails at run time with `Syntax error: Invalid empty identifier`. This error does NOT appear at compile — only when the table actually runs.
-
-```javascript
-// CORRECT — no manual back-ticks, key is sapRaw
-FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "tvgrt")} AS tvgrt
-
-// WRONG — double back-tick + wrong key
-FROM \`${ctx.ref(moduleConfig.sources.sapModule.datasetId, "tvgrt")}\` AS tvgrt
-```
-
-### 4. `table_settings.default.yaml` — MUST use the versioned Cortex format with a `bigquery.iceberg` block
-This is the switch that turns Iceberg on. `isIceberg()` returns true only when the loaded `tableConfig` contains `bigquery.iceberg.bucketName`. That value comes from `table_settings.default.yaml`, and the builder only reads it when the file uses the **versioned** layout (top-level `ecc:` / `s4:` keys → table name → settings). A made-up layout like `tables: { common: [...] }` is silently ignored: the build logs **`Loaded 0 table configurations for <product>`**, `isIceberg` is false, and the product materializes as a **native** table with the right rows but no Iceberg format.
-
-```yaml
-# table_settings.default.yaml — CORRECT (versioned; iceberg block under s4)
-ecc:
-  <product>:
-    materializationType: incremental
-    # bigQueryLabels / dataformTags as per data_modeling_standards
-s4:
-  <product>:
-    materializationType: incremental
-    bigquery:
-      iceberg:
-        connection: <proj>.<LOCATION>.<connection_name>   # e.g. tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
-        bucketName: <iceberg_bucket>                       # e.g. tra-cortex-iceberg-dev
-        fileFormat: PARQUET
-```
-
-**The one-line proof that all four are right:** the build log shows **`Loaded 1 table configurations for <product>`** (N ≥ 1, never 0). If it says `Loaded 0`, the `table_settings.default.yaml` is in the wrong format — fix it before going further.
-
-### Anti-regression rule (applies to every product, Iceberg or not)
-`cortex-build` "Successfully built" is not proof. Before declaring a product done, in order:
-1. Build log shows `Loaded N table configurations` with **N ≥ 1**.
-2. `dataform compile --json | Select-String "<raw_table>"` shows the `FROM` with a **single** back-tick (not `` `` ``).
-3. A **real** `dataform run` (not `--dry-run`, not compile) completes — for incremental Iceberg it emits **three** jobIds (CREATE IF NOT EXISTS + MERGE + EXPORT METADATA).
-4. `TABLE_OPTIONS` shows `table_format = "ICEBERG"` **and** a `storage_uri` — a populated table with an empty `TABLE_OPTIONS` means it materialized native, not Iceberg.
-
-> **Re-running after a native mistake:** if a product first materialized as a native table, the incremental helper's `CREATE TABLE IF NOT EXISTS` will see the existing table and NOT recreate it as Iceberg. `DROP TABLE` the native table first, then run again with the corrected `table_settings`.
-
----
-
 ## Phase 2: Storage URI, Bucket & Connection Conventions
 
 ### Hierarchical bucket layout (MANDATORY)
@@ -163,6 +86,25 @@ Rules for incremental Iceberg products:
 *   The watermark/audit column is **`source_last_updated_at`** (a standard audit column). Incremental filtering compares against it, not against `recordstamp`. Follow `data_modeling_standards` for audit columns (`source_last_updated_at`, `bq_loaded_at`).
 *   The `MERGE` references the target table, which is created by the preceding `CREATE TABLE IF NOT EXISTS`. When testing with `--dry-run`, the MERGE will report "Table not found" because dry-run does not execute the CREATE — this is EXPECTED for a not-yet-materialized incremental table and is NOT a bug. Validate incremental Iceberg products with a real run against an empty/absent table, not with `--dry-run`.
 
+### Deduplicating a non-unique source key requires a FULL-REFRESH, not just a QUALIFY
+
+If the source (`raw`) has multiple rows per the product's `uniqueKey` (common with SAP tables that carry installment/sequence rows, e.g. `t052u` with multiple `ztagg` day-limit rows per `zterm`), the incremental `MERGE` fails with `bigquery error: Scalar subquery produced more than one element` — the MERGE cannot match multiple source rows to one target row.
+
+The fix in the definition is to deduplicate the source to one row per key, e.g.:
+
+```
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY <the key columns>
+  ORDER BY IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) DESC, <tiebreaker>
+) = 1
+```
+
+**But adding the QUALIFY alone does NOT clean a table that already holds duplicates.** The incremental `MERGE` only inserts/updates matched rows; it has no `WHEN NOT MATCHED BY SOURCE THEN DELETE`, so pre-existing duplicate rows in the target survive every incremental run. After adding the dedup you MUST force a full-refresh of that table: `DROP TABLE IF EXISTS <proj>.data_products.<product>;` then re-run the action (the first run recreates the table from scratch, deduplicated). Verify with `SELECT COUNT(*) AS n, COUNT(DISTINCT <key>) AS n_keys ...` — `n` must equal `n_keys`.
+
+Worked example: `payment_terms` (source `t052u`, key `client_mandt, terms_of_payment_zterm, language_key_spras`) returned `n=897 / n_keys=887` while run incrementally — the 10 stale duplicate rows survived every incremental run. Only after `DROP TABLE ... payment_terms` + re-run did it become `887 / 887`.
+
+Decide the granularity deliberately: dedup means the product drops the installment/sequence detail (correct for a name-lookup product). If the business needs the installment rows, model them as a separate product with the fuller key instead of deduplicating.
+
 ---
 
 ## Phase 4: Extension (`_ext`) Product Conventions
@@ -190,6 +132,8 @@ Iceberg products are run through the same GitLab jobs as native products, but tw
 *   For groups that move tens of GiB (e.g. the sales transactional group), set a generous timeout such as `--timeout=30m`. The runner pod deadline is 1h, so 30m fits comfortably. Keep the flag present as a safety cap — only tune the value.
 *   If a group still gets cut at 30m, split the heavy `_ext` (or trailing) actions into their own job rather than shrinking the timeout.
 
+> **"No actions to run" is a DIFFERENT failure from a timeout cut — do not conflate them.** A timeout cut silently skips *trailing* actions but the earlier ones still materialize and the log shows them running. If instead the log prints `No actions to run` with the actions variable clearly *populated* (verify with `echo "[$ACTIONS_<GROUP>]"`), the run selected zero matching actions — which almost always means the pipeline BUILD never generated those products. See Phase 5.4.
+
 ### 5.3 The run command shape
 Every `dataform run` job line follows this shape (note the quoted `--vars` and the whole-run timeout):
 
@@ -197,26 +141,29 @@ Every `dataform run` job line follows this shape (note the quoted `--vars` and t
 dataform run $ACTIONS_<GROUP> --timeout=30m "--vars=icebergBucket=$ICEBERG_BUCKET,icebergConnection=$ICEBERG_CONNECTION" --default-location $BQ_LOCATION
 ```
 
-### 5.4 A new product must be REGISTERED in the CI `ACTIONS_*` variables — otherwise it never runs
-Correct product files in the repo are **not enough** for the pipeline to materialize them. The `.gitlab-ci.yml` runs `dataform run $ACTIONS_<GROUP>`, where each `ACTIONS_<GROUP>` variable is a hard-coded list of `--actions <name>`. A product that is not named in any `ACTIONS_*` list is simply never executed — and the pipeline still reports **success** for the group, because it did exactly what it was told (nothing, for that product). This is a distinct failure from the timeout skip in 5.2: here the action was never queued at all.
+### 5.4 "No actions to run" with a populated actions variable = the pipeline BUILD didn't generate the products
 
-Symptom to recognize: the CI job is green, but the product's table does not exist in `data_products` (a `TABLES`/`TABLE_OPTIONS` query returns nothing for it). "Jobs succeeded" is NOT proof of materialization — only the table existing in the target dataset is.
+This is the highest-value diagnostic in this skill. Symptom: a run job prints `Compiled successfully. No actions to run.` and reports success (a false green), even though the `--actions` variable is present and correct.
 
-When adding a new product:
-*   Add `--actions <name>` to the appropriate `ACTIONS_*` group (create a new group variable + its dev/prod jobs if none fits).
-*   **Action name for a custom single-definition product is the PLAIN product name** (e.g. `sales_districts`, `billing_document_types`, `customers_ext`), confirmed via `dataform compile --json` (`target.name`). This is NOT the `<moduleId>_<tableName>` pattern used by multi-table cortex products (e.g. `sap_customers_customers`) or by multi-table `_ext` products (e.g. `sales_documents_ext_sales_document_headers_ext`). Read the compiled `target.name` — never guess the action name.
-*   Put high-volume products (e.g. Nota Fiscal headers/items, millions of rows) in their **own** group so their timeout budget is independent of the light master-data group.
+**First, rule out the variable itself.** Add a temporary echo in the job just before the `dataform run` line: `echo "[$ACTIONS_<GROUP>]"`. If the value is empty, it's a variable/indentation problem. If the value is FULL and correct (the expected `--actions x --actions y ...`), the variable is not the problem — proceed.
+
+**The real cause:** `dataform run --actions <name>` only matches actions that exist in the COMPILED project. If the build that the pipeline ran did not generate those products, none of the selectors match, and dataform reports "No actions to run" — with the variable full. It does not error; it just selects nothing.
+
+**Why the pipeline build can differ from your local build:** the pipeline does `cp "$CORTEX_CONFIG_FILE" config/config.yaml` and then `cortex-build --config config/config.yaml`. `$CORTEX_CONFIG_FILE` points at a GitLab **File-type CI/CD variable** (`CORTEX_CONFIG_DEV` for dev, `CORTEX_CONFIG_PROD` for prod), which **overwrites** the versioned `config/config.yaml`. So the pipeline does NOT build from the `config/config.yaml` in the repo — it builds from the UI variable. Registering a custom module (namespace + product `modulePath` entries) in the local/versioned `config/config.yaml` is therefore NOT enough: you MUST also update the corresponding File CI/CD variable in the GitLab UI, or the pipeline will never build those products.
+
+**How to confirm it's this and not something else:** compare the "Generating data product" lines in the pipeline build log against a local build. If the custom products (e.g. everything under a `custom_tramontina` namespace) appear locally but are ABSENT from the pipeline log, the CI config variable is stale. You can also add a temporary `grep -n 'custom_tramontina\|namespaces\|modulePath' config/config.yaml` step inside the job to dump the *effective* config the pipeline built from (namespace/module lines are not secret; do not dump the whole config if it might contain anything sensitive).
+
+**Fix:** update the File CI/CD variable (`CORTEX_CONFIG_DEV` / `CORTEX_CONFIG_PROD`) so its content matches the local `config/config.yaml` that correctly registers the custom module. Confirm the variable's project/location match the target environment before pasting (the dev config must point at the dev project, not prod). After updating, re-run the pipeline; the build will now generate the products and the `--actions` selectors will match.
+
+**Remember to remove any temporary `echo`/`grep` debug lines** from the job once the diagnosis is confirmed.
 
 ---
 
 ## Phase 6: Quality Gate & Validation
 
-Run the standard quality gate from `create-data-product` / `update-data-product` (build, validate, pytest), plus Iceberg-specific checks. **First clear all four wiring checks in Phase 1.5** — most "it built but isn't Iceberg" failures are caught there, not here.
+Run the standard quality gate from `create-data-product` / `update-data-product` (build, validate, pytest), plus Iceberg-specific checks:
 
-> **Always rebuild before running after editing `src/`.** `dataform run` and `dataform compile` execute what is in **`build_out/`**, not what is in `src/`. If you edit a product's `.js`/manifest/`table_settings` and then run without rebuilding, you are running the OLD compiled code — you will reproduce errors you already fixed in the source (e.g. a double-back-tick `FROM` that is correct in `src` but stale in `build_out`, giving a spurious `Invalid empty identifier`). The fix is not another source edit — it is `Remove-Item -Recurse -Force build_out; uv run cortex-build ...` then re-run. Confirm the intended change is present in the fresh compile (e.g. `dataform compile --json | Select-String "<raw_table>"` shows a single back-tick) before blaming the source.
-
-0.  **Table-config check (catches the silent-native failure):** in the `cortex-build` log, confirm `Loaded N table configurations for <product>` with **N ≥ 1**. `Loaded 0` means `table_settings.default.yaml` is in the wrong format and the product will materialize native — fix before continuing.
-1.  **Compile check:** after `cortex-build`, confirm the hierarchical path resolves. It resolves at dataform-compile time (not at cortex-build): `cd build_out; dataform compile --json | Select-String "cortex_data_products"`. Also confirm the `FROM` uses a **single** back-tick (a double back-tick `` `` `` means a manual back-tick was wrapped around `ctx.ref()` — see Phase 1.5 §3).
+1.  **Compile check:** after `cortex-build`, confirm the hierarchical path resolves. It resolves at dataform-compile time (not at cortex-build): `cd build_out; dataform compile --json | Select-String "cortex_data_products"`.
 2.  **Isolated materialization:** run the Iceberg action(s) alone with the quoted `--vars` and confirm real bytes are written and `EXPORT TABLE METADATA` succeeds.
 3.  **Group run:** run the action inside its full CI group to confirm it is NOT cut by the run timeout (all actions, including trailing `_ext`, appear in the log).
 4.  **Verify storage_uri on the live table:**
@@ -224,6 +171,7 @@ Run the standard quality gate from `create-data-product` / `update-data-product`
     Confirm it points at `gs://<bucket>/cortex_data_products/<product_folder>/<definition>`.
 5.  **Table format check:**
     `... WHERE option_name='table_format' AND option_value='"ICEBERG"'` should list the product's tables.
+6.  **Uniqueness check (incremental products with dedup):** `SELECT COUNT(*) AS n, COUNT(DISTINCT <key>) AS n_keys ...` — `n` must equal `n_keys`. If it doesn't, the table still holds pre-existing duplicates; DROP and re-run (see Phase 3).
 
 ---
 
