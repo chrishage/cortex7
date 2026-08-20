@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - T171T
+        - t171t
 
 builder: sap_product

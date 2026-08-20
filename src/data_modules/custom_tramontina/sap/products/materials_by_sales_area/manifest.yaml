@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - MVKE
+        - mvke
 
 builder: sap_product

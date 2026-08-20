@@ -10,7 +10,7 @@ dependencies:
       - s4
     tables:
       common:
-        - TINCT
-        - TINC
+        - tinct
+        - tinc
 
 builder: sap_product

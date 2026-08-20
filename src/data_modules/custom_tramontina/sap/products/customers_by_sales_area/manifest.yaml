@@ -10,6 +10,6 @@ dependencies:
       - s4
     tables:
       common:
-        - KNVV
+        - knvv
 
 builder: sap_product
