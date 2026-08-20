@@ -44,8 +44,11 @@ SELECT
     IFNULL(j_1bnfdoc.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')), IFNULL(j_1bnfe_active.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
   ) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM \`${ctx.ref(moduleConfig.sources.sapModule.datasetId, "j_1bnfdoc")}\` AS j_1bnfdoc
-LEFT JOIN \`${ctx.ref(moduleConfig.sources.sapModule.datasetId, "j_1bnfe_active")}\` AS j_1bnfe_active
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "j_1bnfdoc")} AS j_1bnfdoc
+LEFT JOIN (
+  SELECT * FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "j_1bnfe_active")}
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY mandt, docnum ORDER BY IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) DESC) = 1
+) AS j_1bnfe_active
   ON j_1bnfdoc.mandt = j_1bnfe_active.mandt AND j_1bnfdoc.docnum = j_1bnfe_active.docnum
 ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["j_1bnfdoc", "j_1bnfe_active"])

@@ -3,7 +3,7 @@ description: Nota Fiscal Headers
 category: source_aligned_product
 type: nota_fiscal_headers
 dependencies:
-  sapModule:
+  sapRaw:
     modulePath: cortex.sap.foundations.sap
     supportedVersions:
       - ecc
