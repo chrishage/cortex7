@@ -37,6 +37,53 @@ It exports:
 
 In the product's `definitions/*.js`, require the helper with a namespaced import at the top of the file and call `publishProduct(...)` instead of `publish()`. **Do NOT write `CREATE TABLE ... OPTIONS(table_format='ICEBERG')` by hand** — the helper owns that DDL so bucket layout, connection resolution, and metadata export stay consistent.
 
+### 1.1 The canonical definition boilerplate (copy a working product; never invent an API)
+
+The single most expensive class of failure in this project was **inventing a definition shape instead of copying the gold-standard boilerplate**. A definition was written as `require("../../../../../custom_tramontina")` calling `custom_tramontina.publishProduct({name, type, schema, dependencies, query})` — a module and an API signature that **do not exist**. It passed `cortex-build` (which only copies the `.js`) and only blew up at `dataform compile` with `VMError: Cannot find module`.
+
+When creating or editing an Iceberg definition, **copy the exact structure of a product that already materializes** (the gold standard in this repo is `nota_fiscal_headers`), do not reconstruct it from memory. The required shape is:
+
+```javascript
+// ___MODULE_CONTEXT___
+// ___TABLE_CONFIG___
+const moduleConfig = config.product[moduleContext.moduleId];
+const materializationType = tableConfig.materializationType || "incremental";
+const incremental     = require("includes/incremental.js");
+const publish_config  = require("includes/publish_config.js");
+const sql_helper      = require("includes/sql_helper.js");
+const iceberg_helper  = require("includes/iceberg_helper.js");
+
+const publishConfig = publish_config.getPublishConfig(
+  materializationType,
+  tableConfig,
+  moduleConfig,
+  ['client_mandt', '<...the uniqueKey columns...>']   // see Phase 3 — uniqueKey is mandatory
+);
+
+iceberg_helper.publishProduct(
+  tableConfig.tableName,
+  publishConfig,
+  tableConfig,
+  (ctx) => `
+SELECT
+  ... aliased columns ...,
+  IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
+  CURRENT_TIMESTAMP() AS bq_loaded_at
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "<raw_table_lowercase>")} AS <raw_table_lowercase>
+${sql_helper.buildDynamicWhere([
+  incremental.getFilter(ctx, ["<raw_table_lowercase>"]),
+  "mandt = '400'"
+])}
+`
+);
+```
+
+Hard rules that fall out of this shape (each corresponds to a real bug that only surfaced at run time):
+
+*   **Require helpers with the absolute `includes/...` path, never a relative `../` path.** `require("includes/sql_helper.js")` resolves; `require("../../../../../something")` does not. The `../` form is a signal that the definition was invented rather than copied.
+*   **Reference the source with `ctx.ref(moduleConfig.sources.sapRaw.datasetId, "<table>")`, not `ctx.ref("sapRaw", "<table>")`.**
+*   **Raw table names are lowercase.** Cortex V7 generates the `raw` tables in lowercase and is case-sensitive. Use `tvgrt`, not `TVGRT`, both in `ctx.ref(...)` and in the `manifest.yaml` (`dependencies.sapRaw.tables.common: [tvgrt]`). A raw name in the wrong case fails at run with `Unrecognized name: <table>` — see Phase 3.3.
+
 ---
 
 ## Phase 2: Storage URI, Bucket & Connection Conventions
@@ -72,6 +119,38 @@ The helper reads `dfVars.icebergBucket` and `dfVars.icebergConnection` **separat
 
 > **PowerShell quoting (Windows/local runs):** the `--vars=...` argument MUST be wrapped in quotes, e.g. `"--vars=icebergBucket=tra-cortex-iceberg-dev,icebergConnection=DEFAULT"`. Unquoted, PowerShell splits the argument and the helper receives a malformed value. In the GitLab runner (bash) the quoting is harmless but keep it for consistency.
 
+### 2.1 `table_settings.default.yaml` is NESTED, never flat
+
+The per-table settings file must nest the metadata under the SAP version key **and then under the definition (target table) name**. A flat block (Iceberg options spread directly under `s4:`) is rejected by the Pydantic loader at `cortex-build` with `ProductTableSettings: Input should be a valid dictionary`.
+
+Correct shape (mirror an existing working product, e.g. `customers_ext`):
+
+```yaml
+ecc:
+  <definition_name>:
+    materializationType: incremental
+    bigQueryLabels:
+      - key: line_of_business
+        value: sales
+      # ...
+    dataformTags: [sap, sales, sap_sd, custom_tramontina, master, hourly]
+s4:
+  <definition_name>:
+    materializationType: incremental
+    bigQueryLabels:
+      - key: line_of_business
+        value: sales
+      # ...
+    dataformTags: [sap, sales, sap_sd, custom_tramontina, master, hourly]
+    bigquery:
+      iceberg:
+        connection: <as per this repo's convention>
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
+```
+
+Rules: the `bigquery.iceberg` block lives **only under `s4:`**, never under `ecc:`. Copy the exact `connection`/`bucketName`/`fileFormat` values from a product that already materializes rather than guessing them.
+
 ---
 
 ## Phase 3: Incremental vs Full-Refresh Behavior
@@ -86,7 +165,56 @@ Rules for incremental Iceberg products:
 *   The watermark/audit column is **`source_last_updated_at`** (a standard audit column). Incremental filtering compares against it, not against `recordstamp`. Follow `data_modeling_standards` for audit columns (`source_last_updated_at`, `bq_loaded_at`).
 *   The `MERGE` references the target table, which is created by the preceding `CREATE TABLE IF NOT EXISTS`. When testing with `--dry-run`, the MERGE will report "Table not found" because dry-run does not execute the CREATE — this is EXPECTED for a not-yet-materialized incremental table and is NOT a bug. Validate incremental Iceberg products with a real run against an empty/absent table, not with `--dry-run`.
 
-### Deduplicating a non-unique source key requires a FULL-REFRESH, not just a QUALIFY
+### 3.1 The mandt/tenant predicate goes INSIDE `buildDynamicWhere`, never as a trailing `AND`
+
+`sql_helper.buildDynamicWhere(conditions)` filters out empty conditions and, **if the list is empty, returns an empty string** (no `WHERE` keyword at all). On the very FIRST run of an incremental product the target table does not exist yet, so `incremental.getFilter(...)` returns empty — which makes `buildDynamicWhere` return `""`.
+
+Therefore a tenant filter written as a trailing `AND` **after** the helper call becomes an orphaned `AND` with no `WHERE` in front of it, and BigQuery fails with `Syntax error: Expected ")" but got keyword AND`:
+
+```
+-- WRONG — breaks on the first run when getFilter is empty
+${sql_helper.buildDynamicWhere([ incremental.getFilter(ctx, ["tvgrt"]) ])}
+AND mandt = '400'
+```
+
+Put the predicate **inside the list** so the helper always assembles a valid clause (`WHERE <filter> AND mandt='400'`, or `WHERE mandt='400'` when the filter is empty):
+
+```
+-- CORRECT
+${sql_helper.buildDynamicWhere([
+  incremental.getFilter(ctx, ["tvgrt"]),
+  "mandt = '400'"
+])}
+```
+
+For a JOINed product, qualify the predicate with the alias: `"TINCT.mandt = '400'"`.
+
+This bug is invisible to `cortex-build` and to `dataform compile` — both pass. It only appears on a real run against a not-yet-materialized table. A product whose target table already exists (from a prior run) masks it, because then `getFilter` is non-empty and a `WHERE` is emitted. Do not let a passing sibling product convince you the pattern is safe.
+
+### 3.2 If the incremental filter qualifies a column, the FROM MUST alias the table
+
+`incremental.getFilter(ctx, ["tvgrt"])` emits SQL that qualifies the watermark column by the **table name** (e.g. `tvgrt.recordstamp`). BigQuery does **not** create an implicit alias from a fully-qualified path: `FROM \`proj.raw.tvgrt\`` does not make `tvgrt.<col>` usable. The run then fails with `Unrecognized name: tvgrt`.
+
+Give the table an alias equal to the name passed to `getFilter`:
+
+```
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "tvgrt")} AS tvgrt
+```
+
+Products that JOIN and already alias their tables (`... AS TINCT`, `... AS kna1`) do not hit this; single-table products that omit the alias do. Again: compile passes; only the run reveals it.
+
+### 3.3 `Unrecognized name: <table>` almost always means a missing alias or a case/existence mismatch
+
+When a run fails with `Unrecognized name: <table>; Did you mean <a column>?`:
+1.  Confirm the raw table exists and its exact casing: `SELECT table_name FROM \`<proj>.raw.INFORMATION_SCHEMA.TABLES\` WHERE LOWER(table_name)='<table>';` (Cortex generates raw lowercase).
+2.  Confirm the `FROM` aliases the table (Phase 3.2).
+3.  Isolate the failing SELECT in the BigQuery console — with the alias and the qualified column — before touching the definition again. The "Did you mean <column>?" hint means the parser is treating the table token as a stray identifier, which is the alias/qualification problem, not a missing table.
+
+### 3.4 Column order in the SELECT: `WHERE` before `QUALIFY`
+
+BigQuery requires `QUALIFY` to come **after** the `WHERE`. Because `buildDynamicWhere` emits the `WHERE`, any `QUALIFY` (e.g. for dedup, Phase 3.5) must be placed in the template **after** the `${sql_helper.buildDynamicWhere(...)}` call, not before it. Putting `QUALIFY` above the dynamic WHERE is a syntax error.
+
+### 3.5 Deduplicating a non-unique source key requires a FULL-REFRESH, not just a QUALIFY
 
 If the source (`raw`) has multiple rows per the product's `uniqueKey` (common with SAP tables that carry installment/sequence rows, e.g. `t052u` with multiple `ztagg` day-limit rows per `zterm`), the incremental `MERGE` fails with `bigquery error: Scalar subquery produced more than one element` — the MERGE cannot match multiple source rows to one target row.
 
@@ -103,7 +231,26 @@ QUALIFY ROW_NUMBER() OVER (
 
 Worked example: `payment_terms` (source `t052u`, key `client_mandt, terms_of_payment_zterm, language_key_spras`) returned `n=897 / n_keys=887` while run incrementally — the 10 stale duplicate rows survived every incremental run. Only after `DROP TABLE ... payment_terms` + re-run did it become `887 / 887`.
 
-Decide the granularity deliberately: dedup means the product drops the installment/sequence detail (correct for a name-lookup product). If the business needs the installment rows, model them as a separate product with the fuller key instead of deduplicating.
+Before shipping any incremental product, **test the key's uniqueness in the source** so you learn this at authoring time, not at run time: `SELECT <key>, COUNT(*) n FROM \`<proj>.raw.<table>\` WHERE mandt='400' GROUP BY <key> HAVING COUNT(*)>1 LIMIT 20;`. If it returns rows, the key is not unique in the source — decide the granularity deliberately (see below) before writing the MERGE.
+
+Decide the granularity deliberately: dedup means the product drops the installment/sequence detail (correct for a name-lookup product). If the business needs the installment rows, model them as a separate product with the fuller key instead of deduplicating. When deduping, first confirm the dropped rows are redundant, not distinct: `SELECT <key>, COUNT(DISTINCT <descriptive_col>) d ... HAVING d>1` returning nothing means the duplicates are identical and dedup is lossless.
+
+---
+
+## Phase 3.9: The Three Validation Gates (why "it compiled" is not "it works")
+
+Every bug in this project was caught by exactly one of three gates, and each gate is blind to the classes of error the next one catches. Treat the chain as mandatory and in order; **never commit or merge on the strength of an earlier gate alone.**
+
+| Gate | Command | Catches | Blind to |
+|---|---|---|---|
+| 1. Build | `cortex-build --config config/config.yaml --output-dir build_out` | YAML/table_settings structure; that the `.js` is copied | `require()` resolution; ALL SQL |
+| 2. Compile | `cd build_out; dataform compile` | `require()` resolution; Dataform action structure | ALL SQL (it does not execute anything against BigQuery) |
+| 3. Run | the actual run in BigQuery (post-merge, or an isolated action run) | real SQL: orphaned `AND`, missing alias, non-unique key, wrong column | — |
+
+Consequences that must shape behavior:
+*   **Local `cortex-build` passing proves almost nothing** for an Iceberg definition. Always follow it with `dataform compile` locally — that is the gate that catches invented `require`s. The pipeline runs compile; reproduce it locally so you find the error before the push, not in CI.
+*   **`dataform compile` passing proves nothing about the SQL.** Bugs 3.1 (orphaned AND), 3.2 (missing alias), and 3.5 (non-unique key) all compile cleanly and only fail at run. For any incremental product, the real proof is: (a) run the SELECT in the BigQuery console with the alias and qualified filter, (b) test key uniqueness in the source with `GROUP BY ... HAVING COUNT(*)>1`, and (c) see the run materialize the table. Validate in the console **before** committing, the same way you would test any query — the BigQuery console is your dry-run for SQL.
+*   A sibling product that materialized is not evidence your product will. It may have passed only because its target table already existed (masking 3.1) or because it already aliased its table (avoiding 3.2). Judge each product against the gates, not against its neighbors.
 
 ---
 
@@ -124,6 +271,8 @@ Iceberg products are run through the same GitLab jobs as native products, but tw
 ### 5.1 Editing `.gitlab-ci.yml` safely
 *   **NEVER save `.gitlab-ci.yml` with PowerShell `Set-Content`** — it writes a BOM / control character that breaks YAML parsing. Edit and save it through the IDE editor only.
 *   `develop` and `main` are **protected** branches. All changes go through a feature branch → push → Merge Request → merge flow. The MR pipeline may fail on protected SA-key jobs (they cannot read the service-account key in MR context) — this is EXPECTED; only the `compile` job matters for the MR.
+
+> The full GitLab-esteira workflow (branch → MR → merge discipline, `git ls-remote` as source of truth, agent-vs-human division of labor, config File-variable duality) lives in the **`tramontina-cortex-cicd`** skill. This section covers only the Iceberg-specific run mechanics; consult that skill for the git/CI process itself.
 
 ### 5.2 The `--timeout` flag is a WHOLE-RUN wall-clock deadline
 `dataform run --timeout=<duration>` is a **wall-clock deadline for the entire command** (per `dataform run --help`: "when it fires, in-flight work is cancelled"). It is NOT per-action.
@@ -161,28 +310,32 @@ This is the highest-value diagnostic in this skill. Symptom: a run job prints `C
 
 ## Phase 6: Quality Gate & Validation
 
-Run the standard quality gate from `create-data-product` / `update-data-product` (build, validate, pytest), plus Iceberg-specific checks:
+Run the standard quality gate from `create-data-product` / `update-data-product` (build, validate, pytest), plus Iceberg-specific checks. **Run gates 1–3 of Phase 3.9 in order** and do not commit until the run gate is green.
 
-1.  **Compile check:** after `cortex-build`, confirm the hierarchical path resolves. It resolves at dataform-compile time (not at cortex-build): `cd build_out; dataform compile --json | Select-String "cortex_data_products"`.
-2.  **Isolated materialization:** run the Iceberg action(s) alone with the quoted `--vars` and confirm real bytes are written and `EXPORT TABLE METADATA` succeeds.
-3.  **Group run:** run the action inside its full CI group to confirm it is NOT cut by the run timeout (all actions, including trailing `_ext`, appear in the log).
-4.  **Verify storage_uri on the live table:**
+1.  **Compile check:** after `cortex-build`, run `cd build_out; dataform compile` and confirm zero `VMError`/`Compilation errors`, and that the hierarchical path resolves: `dataform compile --json | Select-String "cortex_data_products"`.
+2.  **SQL pre-flight in the console (incremental products):** before committing, run the definition's SELECT in the BigQuery console with the table alias and the qualified incremental filter, and test source-key uniqueness (`GROUP BY <key> HAVING COUNT(*)>1`). This is the cheapest place to catch the run-only bugs (3.1, 3.2, 3.5).
+3.  **Isolated materialization:** run the Iceberg action(s) alone with the quoted `--vars` and confirm real bytes are written and `EXPORT TABLE METADATA` succeeds.
+4.  **Group run:** run the action inside its full CI group to confirm it is NOT cut by the run timeout (all actions, including trailing `_ext`, appear in the log).
+5.  **Verify storage_uri on the live table:**
     `SELECT table_name, option_value FROM \`<proj>.data_products.INFORMATION_SCHEMA.TABLE_OPTIONS\` WHERE option_name='storage_uri' ORDER BY table_name;`
     Confirm it points at `gs://<bucket>/cortex_data_products/<product_folder>/<definition>`.
-5.  **Table format check:**
+6.  **Table format check:**
     `... WHERE option_name='table_format' AND option_value='"ICEBERG"'` should list the product's tables.
-6.  **Uniqueness check (incremental products with dedup):** `SELECT COUNT(*) AS n, COUNT(DISTINCT <key>) AS n_keys ...` — `n` must equal `n_keys`. If it doesn't, the table still holds pre-existing duplicates; DROP and re-run (see Phase 3).
+7.  **Uniqueness check (incremental products):** `SELECT COUNT(*) AS n, COUNT(DISTINCT <key>) AS n_keys ...` — `n` must equal `n_keys`. If it doesn't, the table still holds pre-existing duplicates; DROP and re-run (see Phase 3.5).
+8.  **Referential integrity (header/item products):** every item should resolve to a header — a `LEFT JOIN ... WHERE header.<key> IS NULL` returning 0 confirms no orphans.
 
 ---
 
 ## Phase 7: Environment & Data Caveats to Surface
 
 *   Some environments have **incomplete source replication** (e.g. certain `raw` SAP tables empty in dev/QAS). An Iceberg product materializing **0 rows** because its source is empty is NOT a failure of this skill — surface it to the user as a data-availability note, not a code bug. The success criterion for pipeline integration is that the action EXECUTES (is not skipped), not the row count.
+*   **A product cannot materialize in an environment where its `raw` source does not exist.** Before promoting products to a new environment (e.g. prod), confirm every source `raw` table is present there — the replication (AecorSoft CDC) must have loaded them first. Compare environments with an `EXCEPT DISTINCT` over `INFORMATION_SCHEMA.TABLES` of each `raw` dataset. A missing source surfaces at run as `Unrecognized name` / table-not-found; it is a data-availability prerequisite, not a code bug.
 *   Iceberg restructure decisions (e.g. changing the bucket layout) are often made **dev-first**; do not assume prod should be changed in the same step. Confirm scope with the user before touching prod buckets or objects.
 
 ---
 
 ## Cross-References
+*   [tramontina-cortex-cicd](../tramontina_cortex_cicd/SKILL.md) — the GitLab esteira: branch→MR→merge discipline, `git ls-remote` as source of truth, agent-vs-human division of labor, CORTEX_CONFIG File-variable duality, PROD promotion.
 *   [data-modeling-standards](../data_modeling_standards/SKILL.md) — audit columns, incremental filtering, currency/date patterns.
 *   [create-data-product](../create_data_product/SKILL.md) — scaffolding a new product (call this skill for the materialization part).
 *   [update-data-product](../update_data_product/SKILL.md) — changing an existing product (call this skill when switching it to Iceberg or editing an Iceberg product).
