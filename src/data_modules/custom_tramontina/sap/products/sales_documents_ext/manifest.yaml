@@ -13,6 +13,7 @@ dependencies:
     tables:
       common:
       - vbkd
+      - vbap
     modulePath: cortex.sap.foundations.sap
   sapSalesDocuments:
     modulePath: cortex.sap.products.sales_documents
