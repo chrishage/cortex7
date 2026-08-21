@@ -33,5 +33,9 @@ ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["t052u"])
 , "mandt = '400'"
 ])}
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY mandt, zterm, spras
+  ORDER BY IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) DESC
+) = 1
   `
 );
