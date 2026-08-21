@@ -1,14 +1,27 @@
-const custom_tramontina = require("../../../../../custom_tramontina");
+// ___MODULE_CONTEXT___
+// ___TABLE_CONFIG___
 
-custom_tramontina.publishProduct({
-  name: "materials_by_sales_area",
-  type: "incremental",
-  schema: "data_products",
-  dependencies: ["sapRaw"],
-  query: (
-    ctx
-  ) => `
+const moduleConfig = config.product[moduleContext.moduleId];
+const materializationType = tableConfig.materializationType || "incremental";
+const incremental = require("includes/incremental.js");
+const publish_config = require("includes/publish_config.js");
+const sql_helper = require("includes/sql_helper.js");
+const iceberg_helper = require("includes/iceberg_helper.js");
+
+const publishConfig = publish_config.getPublishConfig(
+  materializationType,
+  tableConfig,
+  moduleConfig,
+  ['client_mandt', 'material_number_matnr', 'sales_organization_vkorg', 'distribution_channel_vtweg']
+);
+
+iceberg_helper.publishProduct(
+  tableConfig.tableName,
+  publishConfig,
+  tableConfig,
+  (ctx) => `
 SELECT
+
   mandt AS client_mandt,
   matnr AS material_number_matnr,
   vkorg AS sales_organization_vkorg,
@@ -28,10 +41,12 @@ SELECT
   mtpos AS item_category_group_mtpos,
   ktgrm AS account_assignment_group_ktgrm,
   lvorm AS deletion_flag_lvorm,
-  CURRENT_TIMESTAMP() AS source_last_updated_at,
+  IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
-FROM
-  ${ctx.ref("sapRaw", "MVKE")}
-QUALIFY ROW_NUMBER() OVER (PARTITION BY mandt, matnr, vkorg, vtweg ORDER BY IFNULL(recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) DESC) = 1
+FROM ${ctx.ref(moduleConfig.sources.sapRaw.datasetId, "mvke")} AS mvke
+${sql_helper.buildDynamicWhere([
+  incremental.getFilter(ctx, ["mvke"])
+, "mandt = '400'"
+])}
   `
-});
+);
