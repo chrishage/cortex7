@@ -73,7 +73,6 @@ variables:
     --actions incoterms
     --actions materials_by_sales_area
     --actions customers_by_sales_area
-    --actions customers_ext
   ACTIONS_NOTAS_FISCAIS: >-
     --actions nota_fiscal_headers
     --actions nota_fiscal_items
