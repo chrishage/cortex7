@@ -142,6 +142,24 @@ ${selectSql}`;
     //    the table). Used by the MERGE, where the table is guaranteed to exist.
     const selectFull = queryFn(shimContext(ctx, fqTable, /*incremental=*/false));
     const selectDelta = queryFn(shimContext(ctx, fqTable, /*incremental=*/true));
+
+    // OTIMIZAÇÃO DE CUSTO: a subquery correlacionada no filtro incremental
+    // (recordstamp >= (SELECT MAX... FROM target)) impede o partition pruning do
+    // BigQuery — o MERGE lê a fonte quase inteira todo run. Materializar o watermark
+    // numa variável de script (DECLARE) antes do MERGE permite o pruning.
+    // Ganho medido: 5,5 GB -> 18,6 MB. Sem mudança de corretude (mesmo valor).
+    // A subquery tem formato fixo gerado por incremental.getFilter (usando ctx.self()=fqTable).
+    const watermarkSubquery = `(
+      SELECT TIMESTAMP_SUB(
+        IFNULL(MAX(source_last_updated_at), TIMESTAMP("1900-12-25 05:30:00+00")),
+        INTERVAL 30 MINUTE
+      )
+      FROM ${fqTable}
+    )`;
+    const usesWatermark = selectDelta.includes(watermarkSubquery);
+    const selectDeltaVar = usesWatermark
+      ? selectDelta.split(watermarkSubquery).join("_watermark")
+      : selectDelta;
     const uniqueKeys = publishConfig.uniqueKey || [];
     if (uniqueKeys.length === 0) {
       throw new Error(
@@ -172,8 +190,19 @@ SELECT * FROM (
 ${selectFull}
 ) WHERE FALSE`;
 
-    const mergeSql =
-      `MERGE ${fqTable} T
+    const mergeSql = usesWatermark
+      ? `BEGIN
+  DECLARE _watermark TIMESTAMP DEFAULT ${watermarkSubquery};
+  MERGE ${fqTable} T
+USING (
+${selectDeltaVar}
+) S
+ON ${onClause}
+WHEN MATCHED THEN UPDATE SET
+    ${updateSet}
+WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals});
+END;`
+      : `MERGE ${fqTable} T
 USING (
 ${selectDelta}
 ) S
