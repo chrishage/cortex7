@@ -114,11 +114,19 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   operate(actionName, opConfig).queries((ctx) => {
     const exportSql = `EXPORT TABLE METADATA FROM ${fqTable}`;
 
+    // CLUSTER BY pelas colunas-chave (uniqueKey) para pruning no MERGE Iceberg.
+    // BigQuery permite no maximo 4 colunas de clustering; pega as primeiras 4.
+    // Iceberg gerenciado NAO persiste PARTITION BY nesta versao — usar so CLUSTER BY.
+    const clusterKeys = (publishConfig.uniqueKey || []).slice(0, 4);
+    const clusterClause = clusterKeys.length > 0
+      ? `CLUSTER BY ${clusterKeys.map(k => `\`${k}\``).join(", ")}`
+      : "";
+
     // ---------- FULL REFRESH ----------
     if (matType === "table") {
       const selectSql = queryFn(shimContext(ctx, fqTable, /*incremental=*/false));
       const createSql =
-        `CREATE OR REPLACE TABLE ${fqTable}
+        `CREATE OR REPLACE TABLE ${fqTable}${clusterClause ? "\n" + clusterClause : ""}
 ${connClause}
 ${optionsClause}
 AS
@@ -156,7 +164,7 @@ ${selectSql}`;
     //   2. MERGE ... -> always runs; the table is guaranteed to exist. On the first
     //      run the table is empty, so every row goes through WHEN NOT MATCHED (insert).
     const createIfNotExists =
-      `CREATE TABLE IF NOT EXISTS ${fqTable}
+      `CREATE TABLE IF NOT EXISTS ${fqTable}${clusterClause ? "\n" + clusterClause : ""}
 ${connClause}
 ${optionsClause}
 AS
