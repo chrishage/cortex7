@@ -34,7 +34,8 @@ const publishConfig = publish_config.getPublishConfig(
     "client_mandt",
     "document_number_mblnr",
     "document_year_mjahr",
-    "document_item_zeile"
+    "document_item_zeile",
+    "debit_credit_indicator_shkzg"
   ]
 );
 
