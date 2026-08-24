@@ -43,42 +43,6 @@ function buildStorageUri(iceberg, tableName, productFolder) {
 }
 
 /**
- * Monta a clausula PARTITION BY a partir de partitionDetails do table_settings.
- *
- *   partitionDetails:
- *     column: <nome_da_coluna>
- *     partitionType: DATE | TIMESTAMP
- *     timeGrain: DAY | MONTH | YEAR   (HOUR tambem para TIMESTAMP)
- *
- * Retorna "" quando ausente ou invalido -> fallback seguro: tabela sem particao,
- * comportamento identico ao anterior. Produto sem partitionDetails nao muda.
- *
- * IMPORTANTE: Iceberg gerenciado PERSISTE a particao. Para conferir, usar a UI do
- * BigQuery ou INFORMATION_SCHEMA.PARTITIONS â€” o campo .ddl de INFORMATION_SCHEMA.TABLES
- * NAO renderiza a particao de tabelas Iceberg (so mostra CLUSTER BY).
- *
- * VALIDADO EM PROD: apenas DATE + DAY. As demais combinacoes seguem a sintaxe do
- * BigQuery mas ainda nao foram testadas em Iceberg gerenciado â€” testar isolado antes.
- */
-function buildPartitionClause(details) {
-  if (!details || !details.column) return "";
-  const col = `\`${details.column}\``;
-  const type = (details.partitionType || "DATE").toUpperCase();
-  const grain = (details.timeGrain || "DAY").toUpperCase();
-
-  if (type === "DATE") {
-    if (grain === "DAY") return `PARTITION BY ${col}`;
-    if (grain === "MONTH" || grain === "YEAR") return `PARTITION BY DATE_TRUNC(${col}, ${grain})`;
-    return "";
-  }
-  if (type === "TIMESTAMP") {
-    if (["HOUR", "DAY", "MONTH", "YEAR"].indexOf(grain) === -1) return "";
-    return `PARTITION BY TIMESTAMP_TRUNC(${col}, ${grain})`;
-  }
-  return "";
-}
-
-/**
  * Shim ctx for the operations context.
  * @param {boolean} incrementalMode whether incremental() should report true.
  */
@@ -104,10 +68,10 @@ function columnNames(publishConfig) {
 }
 
 function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
-  // DEBUG TEMPORARIO
-  console.log("[DBG] " + actionName + " pubKeys: " + JSON.stringify(Object.keys(publishConfig || {})));
-  console.log("[DBG] " + actionName + " pubBq: " + JSON.stringify(publishConfig && publishConfig.bigquery));
-  console.log("[DBG] " + actionName + " uKey: " + JSON.stringify(publishConfig && publishConfig.uniqueKey));
+  // NOTA: as configuracoes de layout NAO vem no tableConfig.
+  // publishConfig.bigquery traz partitionBy/clusterBy ja traduzidos pelo cortex-build
+  // a partir de partitionDetails/clusterDetails do table_settings.
+  // O tableConfig NAO carrega essas chaves — nao tentar ler de la.
   if (!isIceberg(tableConfig)) {
     // Native Cortex behaviour (table / view / incremental).
     publish(actionName, publishConfig).query(queryFn);
@@ -154,25 +118,26 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   operate(actionName, opConfig).queries((ctx) => {
     const exportSql = `EXPORT TABLE METADATA FROM ${fqTable}`;
 
-    // CLUSTER BY: honra clusterDetails.columns do table_settings quando presente;
-    // caso contrario deriva das colunas-chave (uniqueKey), comportamento anterior.
-    // BigQuery permite no maximo 4 colunas de clustering; pega as primeiras 4.
-    // Preferir o yaml evita gastar slot com coluna constante (ex.: client_mandt='400').
-    const clusterDetails = tableConfig.clusterDetails || {};
-    const clusterSource = (clusterDetails.columns && clusterDetails.columns.length > 0)
-      ? clusterDetails.columns
+    // CLUSTER BY: honra publishConfig.bigquery.clusterBy (traduzido pelo
+    // cortex-build a partir de clusterDetails do table_settings); caso ausente,
+    // deriva da uniqueKey. BigQuery permite no maximo 4 colunas de clustering.
+    // Preferir o clusterBy evita gastar slots com colunas constantes da uniqueKey.
+    const pubBq = publishConfig.bigquery || {};
+    const clusterSource = (pubBq.clusterBy && pubBq.clusterBy.length > 0)
+      ? pubBq.clusterBy
       : (publishConfig.uniqueKey || []);
     const clusterKeys = clusterSource.slice(0, 4);
     const clusterClause = clusterKeys.length > 0
       ? `CLUSTER BY ${clusterKeys.map(k => `\`${k}\``).join(", ")}`
       : "";
 
-    // PARTITION BY: honra partitionDetails do table_settings (ver buildPartitionClause).
+    // PARTITION BY: honra publishConfig.bigquery.partitionBy, que ja vem como
+    // expressao SQL pronta (ex.: "DATE(coluna)") — interpolar direto.
     // Ganho no CONSUMO (SELECT com filtro de data: 2,75 GB -> 20 MB medido em prod).
     // NAO reduz o MERGE quando o gargalo e a leitura da tabela FONTE, porque o ON do
     // MERGE e por chave e nao aciona a particao do target.
     // Mudanca CREATE-time: tabela ja existente exige DROP + rerun para adotar.
-    const partitionClause = buildPartitionClause(tableConfig.partitionDetails);
+    const partitionClause = pubBq.partitionBy ? `PARTITION BY ${pubBq.partitionBy}` : "";
 
     // Ordem obrigatoria no DDL: PARTITION BY -> CLUSTER BY -> WITH CONNECTION -> OPTIONS.
     const layoutClause =
@@ -272,6 +237,4 @@ WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals})`;
   });
 }
 
-module.exports = { isIceberg, buildStorageUri, buildPartitionClause, publishProduct };
-
-// DEBUG TEMPORARIO - remover antes do merge final
+module.exports = { isIceberg, buildStorageUri, publishProduct };
