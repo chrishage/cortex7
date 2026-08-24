@@ -269,3 +269,8 @@ WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals})`;
 }
 
 module.exports = { isIceberg, buildStorageUri, buildPartitionClause, publishProduct };
+
+// DEBUG TEMPORARIO - remover antes do merge final
+console.log(`[DBG] ${actionName} tableConfig keys: ${JSON.stringify(Object.keys(tableConfig || {}))}`);
+console.log(`[DBG] ${actionName} partitionDetails: ${JSON.stringify(tableConfig && tableConfig.partitionDetails)}`);
+console.log(`[DBG] ${actionName} clusterDetails: ${JSON.stringify(tableConfig && tableConfig.clusterDetails)}`);
