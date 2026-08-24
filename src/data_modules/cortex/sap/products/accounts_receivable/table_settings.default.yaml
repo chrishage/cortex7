@@ -44,6 +44,12 @@ s4:
     - key: data_class
       value: transactional
     dataformTags: [sap, finance, sap_fi, source_aligned_product, transactional, daily]
+    clusterDetails:
+      columns: [company_code_rbukrs, fiscal_year_gjahr, document_number_belnr, line_item_docln]
+    partitionDetails:
+      column: posting_date_budat
+      partitionType: DATE
+      timeGrain: DAY
     bigquery:
       iceberg:
         connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
