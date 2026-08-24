@@ -235,6 +235,68 @@ Before shipping any incremental product, **test the key's uniqueness in the sour
 
 Decide the granularity deliberately: dedup means the product drops the installment/sequence detail (correct for a name-lookup product). If the business needs the installment rows, model them as a separate product with the fuller key instead of deduplicating. When deduping, first confirm the dropped rows are redundant, not distinct: `SELECT <key>, COUNT(DISTINCT <descriptive_col>) d ... HAVING d>1` returning nothing means the duplicates are identical and dedup is lossless.
 
+### 3.6 A `Scalar subquery` MERGE failure can mean the product's key is INCOMPLETE, not that the source is dirty
+
+The same `bigquery error: Scalar subquery produced more than one element` from 3.5 has a second, distinct cause: the product's `uniqueKey` does not actually identify a row in **your** data. When the source has two legitimately different rows that collapse onto one product key, the MERGE cannot match them and fails — but here dedup is the WRONG fix, because both rows are real and dropping one corrupts the data.
+
+Diagnosis sequence (do all of it before deciding — the first sample row can mislead):
+1. Count duplicated keys: `SELECT <key cols>, COUNT(*) n FROM raw.<t> WHERE mandt='400' GROUP BY <key cols> HAVING COUNT(*)>1`.
+2. Check whether the duplicates differ in business data: `... HAVING COUNT(*)>1 AND (COUNT(DISTINCT <measure1>)>1 OR COUNT(DISTINCT <measure2>)>1)`. If this returns **0**, duplicates are identical-except-technical-id → dedup is lossless (3.5). If it returns **most/all** of the duplicated keys, the rows are genuinely different → the key is incomplete.
+3. Inspect the actual pairs with all candidate columns: find which single column distinguishes them.
+
+Worked example: `sap_materials_movement.material_documents` (S/4 MATDOC). Cortex keys it on `(client_mandt, document_number_mblnr, document_year_mjahr, document_item_zeile)`. In Tramontina's prod data ~199k keys duplicated, and 100% of them differed in business data. The distinguishing column was `shkzg` (debit/credit indicator): stock-transfer movements (e.g. `bwart` Z15) generate **two legitimate legs** — one `S` (debit) and one `H` (credit) — with the same quantity, date, and recordstamp but opposite `shkzg` and different internal GUIDs. Dropping a leg would destroy the stock balance. The fix was to **add `debit_credit_indicator_shkzg` to the key** (the `getPublishConfig` key array), making each leg its own key. Verified `n == k` with `shkzg` included.
+
+Note this is a cortex-standard product, edited in `src/data_modules/cortex/.../s4/material_documents.js` — the code is vendored in the repo, so a one-line key addition is cleaner than a custom override (a full override would replicate ~55 columns + `date`/`currency` includes). A future cortex upgrade may overwrite it; the change is a single line in the key array, trivial to re-apply. Because the key changed on an existing incremental table, this also required DROP+rerun (see 3.7 and the general rule below).
+
+### 3.7 Iceberg MERGE cost: cluster by the key, because without it the MERGE scans the whole target
+
+An incremental Iceberg product's `MERGE ... ON T.key = S.key` scans the **entire target table** to match keys when the table has no clustering — there is nothing to prune. On large tables (tens of GB) run hourly, this dominates BigQuery cost. In this project three cortex financial products (`prcd_elements`, `universal_journal_entry_line_items`, `accounts_receivable`) generated ~$400/week almost entirely from unpruned MERGE scans.
+
+Hard facts, each validated in this environment (do not assume — the Iceberg-managed feature set changes):
+*   **`PARTITION BY` does NOT persist on BigQuery-managed Iceberg tables** (at least in this region/version). BigQuery accepts the syntax without error but the table is created WITHOUT the partition — verify by reading back the DDL, which returns only the `CLUSTER BY`. Do not rely on partitioning.
+*   **`CLUSTER BY` works** and is Google's recommended pruning mechanism for managed Iceberg. Measured effect on a real filtered scan: 453 MB → 89 MB (~80% reduction).
+*   **Syntax position is load-bearing:** `CLUSTER BY` comes **BEFORE** `WITH CONNECTION`, not after. Order: `CREATE TABLE <t> CLUSTER BY <cols> WITH CONNECTION <c> OPTIONS(...) AS ...`. Placing it after `WITH CONNECTION` (as native BigQuery allows) is a syntax error on the Iceberg path.
+
+Implementation lives in the shared helper (`iceberg_helper.js`), which derives the clustering columns automatically from `publishConfig.uniqueKey` (first 4 columns — BigQuery's clustering limit), so **every product that goes through the helper gets clustered by its MERGE key with no per-product config**. This applies to both cortex-standard and custom products. The helper emits the clause into both the full-refresh `CREATE OR REPLACE` and the incremental `CREATE TABLE IF NOT EXISTS`; the MERGE itself is unchanged and benefits automatically. Products whose `uniqueKey` is empty emit no `CLUSTER BY`.
+
+**Clustering is a CREATE-time property — applying it to an existing table requires DROP+rerun.** A table already materialized without clustering is not re-clustered in place by the changed helper. After deploying the helper change, DROP each large table and re-run once (the initial re-run reads everything and is expensive; every run after is ~80% cheaper). Same operational shape as 3.5 and 3.6.
+
+A second, orthogonal cost lever is **frequency**: a large financial product set to `hourly` in `table_settings` that the business only needs daily should be moved to a daily schedule. Clustering cuts cost-per-run; frequency cuts number-of-runs. They compound.
+
+### General rule (ties 3.5, 3.6, 3.7 together): a CREATE-time change to an existing Iceberg incremental table needs DROP+rerun
+
+`CREATE TABLE IF NOT EXISTS` never alters an existing table. So any change that lives in the CREATE — the column schema, the `uniqueKey`, the `CLUSTER BY` — does NOT take effect on a table that already exists; the next incremental run keeps using the old table and the MERGE either fails (schema/key mismatch) or misses the optimization (clustering). Whenever you change any of these on a product that has already materialized, `DROP TABLE IF EXISTS <proj>.data_products.<product>;` then re-run. `onSchemaChange: "EXTEND"` does NOT apply to the Iceberg path (the helper emits its own operations, bypassing Dataform's schema-extension mechanism).
+
+### 3.8 The biggest incremental-MERGE cost driver: a correlated subquery in the filter kills partition pruning
+
+Before blaming clustering or partitioning for a high MERGE cost, check whether the incremental filter uses a **correlated subquery** for the watermark. The Cortex incremental filter (from `incremental.getFilter`) is `recordstamp >= (SELECT MAX(source_last_updated_at) FROM <target>)`. Because the cutoff comes from a subquery, BigQuery does not know its value at planning time and **cannot prune** — it reads far more of the source than the delta requires, every run.
+
+Proof (measured in prod, identical filter, identical 71k-row delta):
+
+| Filter form | Bytes read |
+|---|---|
+| Literal `recordstamp >= TIMESTAMP('…')` | 22 MB |
+| Correlated subquery `>= (SELECT MAX(…) FROM target)` | 5.5 GB (250×) |
+| Scripting variable `>= watermark` (DECLARE/SET) | 18.6 MB (fixed) |
+
+The fix is to **materialize the watermark into a script variable before the MERGE**, so the cutoff is a constant at planning time and pruning kicks in. There is **no correctness change** — the value is identical, just evaluated once up front instead of inline:
+```sql
+BEGIN
+  DECLARE _watermark TIMESTAMP DEFAULT (
+    SELECT TIMESTAMP_SUB(IFNULL(MAX(source_last_updated_at),
+      TIMESTAMP('1900-12-25 05:30:00+00')), INTERVAL 30 MINUTE) FROM <target>);
+  MERGE <target> T USING (SELECT … WHERE recordstamp >= _watermark) S ON …;
+END;
+```
+
+Two architectural constraints in the Iceberg path: (1) the helper returns `[createIfNotExists, mergeSql, exportSql]` as **separate** statements, so a bare `DECLARE` won't share scope with the MERGE — the DECLARE must live **inside** `mergeSql` as a self-contained `BEGIN…END` block; (2) the filter string is produced by `getFilter` in the product SELECT and used by both Iceberg and non-Iceberg paths, so switching it to a variable must not break the non-Iceberg path (make it opt-in). This is a change to the shared incremental mechanism — validate delta correctness (rows captured must equal the subquery's) and script execution before rolling out.
+
+**Note on the GREATEST red herring:** a multi-table filter `GREATEST(a.recordstamp, b.recordstamp, c.recordstamp) >= …` looks like the culprit (it forces the JOIN before filtering), but a product already using a single-table filter (`["acdoca"]`, no GREATEST) showed the *same* ~800 GB/run — proving the subquery, not the GREATEST, is the dominant cost. Fix the subquery first.
+
+### 3.8b Measure incremental-MERGE cost ONLY in an environment with active CDC
+
+A dev environment with a **stopped/batch-loaded** raw layer gives misleading MERGE cost numbers. If the raw table's `recordstamp` is frozen (e.g. 99.99% of rows stamped on the initial bulk-load date because CDC isn't running), the incremental filter matches almost everything and the MERGE reads the whole table — showing false 700+ GB that do NOT reflect prod. In this project, dev `acdoca` had all 334M rows stamped `2026-07-07` (bulk load, CDC stopped), so the dev MERGE test showed 0% clustering benefit and 700 GB reads — both artifacts of the frozen watermark. Prod, with live CDC, had `recordstamp` advancing daily and a correct recent `MAX(source_last_updated_at)`. **Validate cost changes in prod (or a dev with active CDC), never in a dev with a parked load.**
+
 ---
 
 ## Phase 3.9: The Three Validation Gates (why "it compiled" is not "it works")
