@@ -253,19 +253,21 @@ Note this is a cortex-standard product, edited in `src/data_modules/cortex/.../s
 An incremental Iceberg product's `MERGE ... ON T.key = S.key` scans the **entire target table** to match keys when the table has no clustering — there is nothing to prune. On large tables (tens of GB) run hourly, this dominates BigQuery cost. In this project three cortex financial products (`prcd_elements`, `universal_journal_entry_line_items`, `accounts_receivable`) generated ~$400/week almost entirely from unpruned MERGE scans.
 
 Hard facts, each validated in this environment (do not assume — the Iceberg-managed feature set changes):
-*   **`PARTITION BY` does NOT persist on BigQuery-managed Iceberg tables** (at least in this region/version). BigQuery accepts the syntax without error but the table is created WITHOUT the partition — verify by reading back the DDL, which returns only the `CLUSTER BY`. Do not rely on partitioning.
+*   **`PARTITION BY` DOES persist on BigQuery-managed Iceberg tables.** An earlier version of this skill claimed the opposite — that was a **measurement error**: `INFORMATION_SCHEMA.TABLES.ddl` does NOT render the partition for Iceberg tables (it shows only the `CLUSTER BY`), so reading back the DDL made it look absent. Verify partitioning in the **BigQuery UI** (table → Details) or via `INFORMATION_SCHEMA.PARTITIONS` — **never** from `.ddl`. Confirmed in dev: `universal_journal_entry_line_items` shows *Partitioned by DAY* on `posting_date_in_the_document_budat`. See 3.10–3.11 for how the clause actually reaches the helper, and note that partitioning the **target** does NOT reduce MERGE cost when the bottleneck is reading the **source** table (the MERGE's `ON` is by key, not by date, so the target's partition is never pruned).
 *   **`CLUSTER BY` works** and is Google's recommended pruning mechanism for managed Iceberg. Measured effect on a real filtered scan: 453 MB → 89 MB (~80% reduction).
-*   **Syntax position is load-bearing:** `CLUSTER BY` comes **BEFORE** `WITH CONNECTION`, not after. Order: `CREATE TABLE <t> CLUSTER BY <cols> WITH CONNECTION <c> OPTIONS(...) AS ...`. Placing it after `WITH CONNECTION` (as native BigQuery allows) is a syntax error on the Iceberg path.
+*   **Syntax position is load-bearing:** the order is `PARTITION BY` → `CLUSTER BY` → `WITH CONNECTION` → `OPTIONS`. Full shape: `CREATE TABLE <t> PARTITION BY <expr> CLUSTER BY <cols> WITH CONNECTION <c> OPTIONS(...) AS ...`. Placing either clause after `WITH CONNECTION` (as native BigQuery allows) is a syntax error on the Iceberg path.
 
-Implementation lives in the shared helper (`iceberg_helper.js`), which derives the clustering columns automatically from `publishConfig.uniqueKey` (first 4 columns — BigQuery's clustering limit), so **every product that goes through the helper gets clustered by its MERGE key with no per-product config**. This applies to both cortex-standard and custom products. The helper emits the clause into both the full-refresh `CREATE OR REPLACE` and the incremental `CREATE TABLE IF NOT EXISTS`; the MERGE itself is unchanged and benefits automatically. Products whose `uniqueKey` is empty emit no `CLUSTER BY`.
+Implementation lives in the shared helper (`iceberg_helper.js`), which takes the clustering columns from `publishConfig.bigquery.clusterBy` when present, falling back to `publishConfig.uniqueKey` (first 4 columns — BigQuery's clustering limit). See 3.10 for where those values come from and 3.12 for why `clusterBy` is preferred. So **every product that goes through the helper gets clustered with no per-product code**. This applies to both cortex-standard and custom products. The helper emits the clause into both the full-refresh `CREATE OR REPLACE` and the incremental `CREATE TABLE IF NOT EXISTS`; the MERGE itself is unchanged and benefits automatically. Products with neither `clusterBy` nor `uniqueKey` emit no `CLUSTER BY`.
 
-**Clustering is a CREATE-time property — applying it to an existing table requires DROP+rerun.** A table already materialized without clustering is not re-clustered in place by the changed helper. After deploying the helper change, DROP each large table and re-run once (the initial re-run reads everything and is expensive; every run after is ~80% cheaper). Same operational shape as 3.5 and 3.6.
+**Clustering is a CREATE-time property — applying it to an existing table requires DROP+rerun.** A table already materialized without clustering is not re-clustered in place by the changed helper. After deploying the helper change, DROP each large table and re-run once (the initial re-run reads everything and is expensive; every run after is ~80% cheaper). Same operational shape as 3.5 and 3.6. See 3.13 — the DROP must also clean the GCS prefix.
 
 A second, orthogonal cost lever is **frequency**: a large financial product set to `hourly` in `table_settings` that the business only needs daily should be moved to a daily schedule. Clustering cuts cost-per-run; frequency cuts number-of-runs. They compound.
 
 ### General rule (ties 3.5, 3.6, 3.7 together): a CREATE-time change to an existing Iceberg incremental table needs DROP+rerun
 
-`CREATE TABLE IF NOT EXISTS` never alters an existing table. So any change that lives in the CREATE — the column schema, the `uniqueKey`, the `CLUSTER BY` — does NOT take effect on a table that already exists; the next incremental run keeps using the old table and the MERGE either fails (schema/key mismatch) or misses the optimization (clustering). Whenever you change any of these on a product that has already materialized, `DROP TABLE IF EXISTS <proj>.data_products.<product>;` then re-run. `onSchemaChange: "EXTEND"` does NOT apply to the Iceberg path (the helper emits its own operations, bypassing Dataform's schema-extension mechanism).
+`CREATE TABLE IF NOT EXISTS` never alters an existing table. So any change that lives in the CREATE — the column schema, the `uniqueKey`, the `CLUSTER BY`, the `PARTITION BY` — does NOT take effect on a table that already exists; the next incremental run keeps using the old table and the MERGE either fails (schema/key mismatch) or misses the optimization. Whenever you change any of these on a product that has already materialized, `DROP TABLE IF EXISTS <proj>.data_products.<product>;`, clean the GCS prefix (3.13), then re-run. `onSchemaChange: "EXTEND"` does NOT apply to the Iceberg path (the helper emits its own operations, bypassing Dataform's schema-extension mechanism).
+
+**Counter-example worth knowing:** column/table **descriptions** are NOT CREATE-time — `ALTER TABLE … SET OPTIONS(description=…)` works on an existing managed Iceberg table (verified in dev). Do not DROP a table just to add metadata. See 3.14.
 
 ### 3.8 The biggest incremental-MERGE cost driver: a correlated subquery in the filter kills partition pruning
 
@@ -297,6 +299,99 @@ Two architectural constraints in the Iceberg path: (1) the helper returns `[crea
 
 A dev environment with a **stopped/batch-loaded** raw layer gives misleading MERGE cost numbers. If the raw table's `recordstamp` is frozen (e.g. 99.99% of rows stamped on the initial bulk-load date because CDC isn't running), the incremental filter matches almost everything and the MERGE reads the whole table — showing false 700+ GB that do NOT reflect prod. In this project, dev `acdoca` had all 334M rows stamped `2026-07-07` (bulk load, CDC stopped), so the dev MERGE test showed 0% clustering benefit and 700 GB reads — both artifacts of the frozen watermark. Prod, with live CDC, had `recordstamp` advancing daily and a correct recent `MAX(source_last_updated_at)`. **Validate cost changes in prod (or a dev with active CDC), never in a dev with a parked load.**
 
+### 3.10 Layout configs (`partitionDetails`/`clusterDetails`) do NOT arrive in `tableConfig`
+
+`cortex-build` reads `partitionDetails`/`clusterDetails` from `table_settings.default.yaml`, **translates** them into Dataform's format, and delivers them on `publishConfig.bigquery` — never on `tableConfig`:
+
+```
+publishConfig.bigquery.partitionBy = "DATE(posting_date_in_the_document_budat)"
+publishConfig.bigquery.clusterBy   = ["company_code_rbukrs", "fiscal_year_gjahr",
+                                      "accounting_document_number_belnr", "line_item_docln"]
+```
+
+The `tableConfig` reaching `publishProduct` only ever contains:
+`["tableName","tags","materializationType","bigquery","description","columns"]`
+(plus `filters` on a few products). Reading `tableConfig.partitionDetails` returns `undefined` **silently** — the helper falls back and nothing happens. Symptom: the table is recreated with no partition and clustering derived from `uniqueKey`, while the yaml looks correct.
+
+**Debugging technique:** a `console.log` at the top of `publishProduct` shows up in the `compile` job log, which runs in ~2.5 min and creates no tables. This is the cheapest way to inspect what actually reaches the helper. Filter by `actionName` so only the product under investigation prints:
+
+```js
+if (actionName.indexOf("<product>") >= 0) {
+  console.log("[DBG] " + JSON.stringify(Object.keys(publishConfig)));
+}
+```
+
+Remove the debug line in the same commit that ships the fix.
+
+### 3.11 `cortex-build` emits `DATE(col)` without checking the column type
+
+`partitionBy` is assembled blindly: column + `partitionType: DATE` becomes `DATE(column)`.
+
+If the column is **already DATE** — which every SAP date column is (`budat`, `erdat`, …) — BigQuery rejects the CREATE:
+
+> PARTITION BY expression must be DATE(\<timestamp_column\>), DATE(\<datetime_column\>), DATETIME_TRUNC(…), a DATE column, TIMESTAMP_TRUNC(…), DATE_TRUNC(\<date_column\>, MONTH/YEAR), or RANGE_BUCKET(…)
+
+`DATE()` only accepts TIMESTAMP or DATETIME. For a DATE column the valid forms are the **bare column** or `DATE_TRUNC(col, MONTH/YEAR)`.
+
+Fix in `iceberg_helper.js` — unwrap when the argument is a simple identifier:
+
+```js
+const rawPartition = pubBq.partitionBy || "";
+const unwrapped = rawPartition.replace(/^DATE\(\s*([A-Za-z0-9_]+)\s*\)$/, "$1");
+const partitionClause = unwrapped ? `PARTITION BY ${unwrapped}` : "";
+```
+
+The regex leaves `DATE_TRUNC(...)` and `TIMESTAMP_TRUNC(...)` untouched, and an absent `partitionBy` yields no clause at all (safe fallback: unpartitioned, previous behaviour).
+
+**Known limitation:** a product partitioned on a genuine TIMESTAMP column would legitimately need `DATE(...)`, and this unwrap would break it. The helper cannot know column types at compile time. Today only `universal_journal_entry_line_items` partitions on the Iceberg path and its column is DATE; revisit if that changes.
+
+### 3.12 Prefer `clusterBy` over `uniqueKey` for clustering
+
+Cortex `uniqueKey` arrays start with tenant/ledger columns that are **constants** in a single-tenant landscape (`client_rclnt = '400'`, `ledger_in_general_ledger_accounting_rldnr`). Clustering on a constant wastes the slot — and BigQuery allows only 4.
+
+`universal_journal_entry_line_items`, derived from `uniqueKey`: `client_rclnt, ledger_…, company_code_rbukrs, fiscal_year_gjahr` — **2 of 4 slots wasted**.
+From `clusterBy` (the yaml's `clusterDetails.columns`): `company_code_rbukrs, fiscal_year_gjahr, accounting_document_number_belnr, line_item_docln`.
+
+Keep `uniqueKey` as the fallback for products with no `clusterDetails` in the yaml — that preserves the previous behaviour everywhere else.
+
+Note this makes `clusterDetails` in `table_settings.default.yaml` **load-bearing** for Iceberg products: it used to be inert config (the helper ignored it), so a stale or wrong column list there had no effect and may never have been reviewed. Check it before deploying. For products with `materializationType: table` the change lands on the next run (the `CREATE OR REPLACE` re-creates the table); for `incremental` it needs DROP+rerun.
+
+### 3.13 DROPping a managed Iceberg table leaves ORPHANED FILES in GCS
+
+`DROP TABLE` removes the table from BigQuery but **does not** clean `gs://<bucket>/cortex_data_products/<product>/<table>/`. The Parquet files and Iceberg metadata stay behind, and the next `CREATE` points at an already-occupied `storage_uri`.
+
+Always clean the prefix between the DROP and the rerun:
+
+```
+gcloud storage ls  gs://<bucket>/cortex_data_products/<product>/<table>/
+gcloud storage du -s gs://<bucket>/cortex_data_products/<product>/<table>/
+gcloud storage rm --recursive gs://<bucket>/cortex_data_products/<product>/<table>/
+```
+
+List and size it **before** removing. There is no recycle bin in GCS — read the whole command and confirm the bucket (`-dev` vs `-prod`) and the trailing slash before hitting enter; without the slash a prefix match could catch sibling tables (e.g. `…_line_items` would also match `…_line_items_icebergpartitioned`).
+
+If the corporate proxy blocks `gcloud` locally (`ConnectTimeout` on `oauth2.googleapis.com` even when `Test-NetConnection … -Port 443` succeeds), run it from **Cloud Shell** in the browser — same commands, inside Google's network.
+
+### 3.14 The helper DISCARDS column descriptions (annotations never reach BigQuery)
+
+`publishConfig.columns` arrives as an object `{column: description}`, populated from the product's `annotations/<version>/<table>.yaml`. Confirmed by `console.log` in `publishProduct`:
+
+```
+{"client_rclnt":"Client, PK","company_code_rbukrs":"Company Code, PK", …}
+```
+
+But `columnNames()` does `Object.keys(cols)` and drops every value, and the emitted DDL carries no `description` — neither per column nor on the table (`publishConfig.description` goes to `opConfig`, which is Dataform metadata, not BigQuery DDL). Result: **every Iceberg product ships with zero column descriptions.** Verify with:
+
+```sql
+SELECT column_name, description
+FROM `<proj>.data_products`.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+WHERE table_name = '<table>' AND description IS NOT NULL;
+```
+
+**Not yet fixed.** The good news is that this does NOT need a rebuild: `ALTER TABLE … ALTER COLUMN … SET OPTIONS(description=…)` works on an existing managed Iceberg table (verified in dev on `sales_groups`). A fix would append those ALTERs to the statement array after the CREATE, plus `description=` inside the CREATE's `OPTIONS()`. Watch for single quotes/apostrophes in the annotation text — they must be escaped or the whole DDL breaks.
+
+**Caveat before blaming the helper:** a non-Iceberg product in the same dataset (`vendors`, which goes through Dataform's native `publish()`) is ALSO missing descriptions, and no table in `data_products` has any. So there may be a second cause upstream — possibly related to `external: true` on the SAP foundation, which makes the build log `Skipping metadata fetch and SQLX generation`. Diagnose both before assuming a helper fix will cover the whole dataset.
+
 ---
 
 ## Phase 3.9: The Three Validation Gates (why "it compiled" is not "it works")
@@ -307,11 +402,13 @@ Every bug in this project was caught by exactly one of three gates, and each gat
 |---|---|---|---|
 | 1. Build | `cortex-build --config config/config.yaml --output-dir build_out` | YAML/table_settings structure; that the `.js` is copied | `require()` resolution; ALL SQL |
 | 2. Compile | `cd build_out; dataform compile` | `require()` resolution; Dataform action structure | ALL SQL (it does not execute anything against BigQuery) |
-| 3. Run | the actual run in BigQuery (post-merge, or an isolated action run) | real SQL: orphaned `AND`, missing alias, non-unique key, wrong column | — |
+| 3. Run | the actual run in BigQuery (post-merge, or an isolated action run) | real SQL: orphaned `AND`, missing alias, non-unique key, wrong column, invalid DDL clauses | — |
 
 Consequences that must shape behavior:
 *   **Local `cortex-build` passing proves almost nothing** for an Iceberg definition. Always follow it with `dataform compile` locally — that is the gate that catches invented `require`s. The pipeline runs compile; reproduce it locally so you find the error before the push, not in CI.
-*   **`dataform compile` passing proves nothing about the SQL.** Bugs 3.1 (orphaned AND), 3.2 (missing alias), and 3.5 (non-unique key) all compile cleanly and only fail at run. For any incremental product, the real proof is: (a) run the SELECT in the BigQuery console with the alias and qualified filter, (b) test key uniqueness in the source with `GROUP BY ... HAVING COUNT(*)>1`, and (c) see the run materialize the table. Validate in the console **before** committing, the same way you would test any query — the BigQuery console is your dry-run for SQL.
+*   **`dataform compile` passing proves nothing about the SQL.** Bugs 3.1 (orphaned AND), 3.2 (missing alias), 3.5 (non-unique key) and 3.11 (invalid `PARTITION BY` expression) all compile cleanly and only fail at run. For any incremental product, the real proof is: (a) run the SELECT in the BigQuery console with the alias and qualified filter, (b) test key uniqueness in the source with `GROUP BY ... HAVING COUNT(*)>1`, and (c) see the run materialize the table. Validate in the console **before** committing, the same way you would test any query — the BigQuery console is your dry-run for SQL.
+*   **A local build may be impossible.** `cortex-build` validates GCP APIs before generating anything, so it needs network and valid ADC. Behind a corporate proxy it can fail with `ConnectTimeout` on `oauth2.googleapis.com` even when the port is reachable. In that case gate 1 and 2 only exist in CI — push to a branch and read the `compile` job. Pure-JS logic in the helper can still be unit-tested locally with `node -e` against an exported function.
+*   **Never trust a `build_out/` you did not just generate.** It is build output; a stale one silently compiles the OLD helper and produces a green result that proves nothing. Verify with `Select-String -Path build_out\includes\iceberg_helper.js -Pattern "<a symbol from your change>"` before believing a local compile.
 *   A sibling product that materialized is not evidence your product will. It may have passed only because its target table already existed (masking 3.1) or because it already aliased its table (avoiding 3.2). Judge each product against the gates, not against its neighbors.
 
 ---
@@ -385,6 +482,8 @@ Run the standard quality gate from `create-data-product` / `update-data-product`
     `... WHERE option_name='table_format' AND option_value='"ICEBERG"'` should list the product's tables.
 7.  **Uniqueness check (incremental products):** `SELECT COUNT(*) AS n, COUNT(DISTINCT <key>) AS n_keys ...` — `n` must equal `n_keys`. If it doesn't, the table still holds pre-existing duplicates; DROP and re-run (see Phase 3.5).
 8.  **Referential integrity (header/item products):** every item should resolve to a header — a `LEFT JOIN ... WHERE header.<key> IS NULL` returning 0 confirms no orphans.
+9.  **Layout check (partitioned/clustered products):** confirm in the **BigQuery UI** (table → Details) that *Partitioned by* and *Clustered by* show the expected fields — NOT via `.ddl`, which hides the partition (3.7). Then prove the pruning works: a `COUNT(*)` filtered on the partition column should process a small fraction of the table's size (measured in dev: 72 MB on a 34.79 GB table). A filter that wraps the column in a function (e.g. `EXTRACT(MONTH FROM col)`) defeats pruning and gives you the "before" number for comparison.
+10. **Row-count parity after a DROP+rerun:** count the table before the DROP and after the rerun — they must match (dev `universal_journal_entry_line_items`: 334,374,343 both times). Then run the incremental group a **second** time and count again: an unchanged count proves the MERGE works against the new layout without duplicating or losing rows. The first run only exercises the CREATE; only the second exercises the MERGE.
 
 ---
 
@@ -393,6 +492,7 @@ Run the standard quality gate from `create-data-product` / `update-data-product`
 *   Some environments have **incomplete source replication** (e.g. certain `raw` SAP tables empty in dev/QAS). An Iceberg product materializing **0 rows** because its source is empty is NOT a failure of this skill — surface it to the user as a data-availability note, not a code bug. The success criterion for pipeline integration is that the action EXECUTES (is not skipped), not the row count.
 *   **A product cannot materialize in an environment where its `raw` source does not exist.** Before promoting products to a new environment (e.g. prod), confirm every source `raw` table is present there — the replication (AecorSoft CDC) must have loaded them first. Compare environments with an `EXCEPT DISTINCT` over `INFORMATION_SCHEMA.TABLES` of each `raw` dataset. A missing source surfaces at run as `Unrecognized name` / table-not-found; it is a data-availability prerequisite, not a code bug.
 *   Iceberg restructure decisions (e.g. changing the bucket layout) are often made **dev-first**; do not assume prod should be changed in the same step. Confirm scope with the user before touching prod buckets or objects.
+*   **Partitioning helps CONSUMPTION, not the pipeline.** Before spending a rebuild on it, check who actually reads the table and how. `INFORMATION_SCHEMA.JOBS_BY_PROJECT` filtered to `statement_type='SELECT'` and grouped by `user_email` shows BigQuery-side consumption; if the external engine (Databricks) reads the Iceberg files straight from GCS, those reads do NOT appear there and the question must go to that team. A rebuild costs a full source scan for certain; the benefit should not be assumed.
 
 ---
 
