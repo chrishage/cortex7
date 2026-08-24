@@ -137,7 +137,12 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
     // NAO reduz o MERGE quando o gargalo e a leitura da tabela FONTE, porque o ON do
     // MERGE e por chave e nao aciona a particao do target.
     // Mudanca CREATE-time: tabela ja existente exige DROP + rerun para adotar.
-    const partitionClause = pubBq.partitionBy ? `PARTITION BY ${pubBq.partitionBy}` : "";
+    // O cortex-build gera "DATE(coluna)" sem checar o tipo. Em coluna ja DATE isso
+    // e invalido no BigQuery (DATE() so aceita TIMESTAMP/DATETIME). Como as colunas
+    // de particao dos produtos SAP sao DATE, desembrulha para a coluna nua.
+    const rawPartition = pubBq.partitionBy || "";
+    const unwrapped = rawPartition.replace(/^DATE\(\s*([A-Za-z0-9_]+)\s*\)$/, "$1");
+    const partitionClause = unwrapped ? `PARTITION BY ${unwrapped}` : "";
 
     // Ordem obrigatoria no DDL: PARTITION BY -> CLUSTER BY -> WITH CONNECTION -> OPTIONS.
     const layoutClause =
