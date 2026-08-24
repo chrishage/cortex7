@@ -24,11 +24,11 @@ s4:
       value: transactional
     dataformTags: [sap, finance, sap_fi, sap_co, source_aligned_product, transactional, hourly]
     clusterDetails:
-      columns: [company_code_rbukrs]
+      columns: [company_code_rbukrs,fiscal_year_gjahr,accounting_document_number_belnr,line_item_docln]
     partitionDetails:
       column: posting_date_in_the_document_budat
       partitionType: DATE
-      timeGrain: MONTH
+      timeGrain: DAY
     bigquery:
       iceberg:
         connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
