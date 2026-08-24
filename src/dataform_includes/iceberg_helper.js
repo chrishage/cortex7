@@ -43,6 +43,18 @@ function buildStorageUri(iceberg, tableName, productFolder) {
 }
 
 /**
+ * Escapa uma string para interpolacao segura em literal SQL entre aspas simples.
+ * As descricoes vem das annotations e contem apostrofos, acentos e parenteses;
+ * um apostrofo nao escapado quebra o DDL inteiro do produto.
+ */
+function sqlStr(s) {
+  return String(s)
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, " ");
+}
+
+/**
  * Shim ctx for the operations context.
  * @param {boolean} incrementalMode whether incremental() should report true.
  */
@@ -65,6 +77,43 @@ function columnNames(publishConfig) {
   if (!cols) return [];
   if (Array.isArray(cols)) return cols.slice();
   return Object.keys(cols);
+}
+
+/**
+ * Monta um unico ALTER TABLE aplicando as descricoes de coluna vindas das
+ * annotations (publishConfig.columns = {coluna: descricao}).
+ *
+ * POR QUE ISTO EXISTE: no caminho nativo o Dataform aplica as descricoes via API
+ * (tables.patch) a partir do publishConfig.columns. O helper usa operate() em vez
+ * de publish(), entao esse mecanismo nao roda e os produtos Iceberg ficam SEM
+ * descricao nenhuma. O CREATE ... AS SELECT nao permite anotar colunas, logo a
+ * unica via e um ALTER apos a criacao.
+ *
+ * Nao e CREATE-time: funciona em tabela existente (validado em Iceberg gerenciada),
+ * portanto NAO exige DROP+rerun.
+ *
+ * Protegido por EXCEPTION: descricao e metadado e nunca deve derrubar uma carga.
+ * Se uma coluna do publishConfig nao existir na tabela, o ALTER inteiro falharia e
+ * mataria o produto - com o handler, vira no-op silencioso.
+ *
+ * Retorna null quando nao ha descricoes (columns ausente ou array de nomes).
+ */
+function buildDescriptionsSql(fqTable, publishConfig) {
+  const cols = publishConfig.columns;
+  if (!cols || Array.isArray(cols)) return null;
+  const named = Object.keys(cols).filter(k => cols[k]);
+  if (named.length === 0) return null;
+
+  const setters = named
+    .map(k => `  ALTER COLUMN \`${k}\` SET OPTIONS(description='${sqlStr(cols[k])}')`)
+    .join(",\n");
+
+  return `BEGIN
+ALTER TABLE ${fqTable}
+${setters};
+EXCEPTION WHEN ERROR THEN
+  SELECT CONCAT('[iceberg_helper] column descriptions skipped: ', @@error.message);
+END;`;
 }
 
 function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
@@ -102,8 +151,14 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   const productId = actionName.slice(0, actionName.length - (tableName.length + 1));
   const productFolder = productId.replace(/^sap_/, "");
   const storageUri = buildStorageUri(effectiveIceberg, tableName, productFolder);
+
+  // Descricao da TABELA: cabe direto no OPTIONS() do CREATE (diferente das colunas,
+  // que exigem ALTER - ver buildDescriptionsSql).
+  const tableDesc = publishConfig.description
+    ? `, description='${sqlStr(publishConfig.description)}'`
+    : "";
   const optionsClause =
-    `OPTIONS(file_format='${fileFormat}', table_format='ICEBERG', storage_uri='${storageUri}')`;
+    `OPTIONS(file_format='${fileFormat}', table_format='ICEBERG', storage_uri='${storageUri}'${tableDesc})`;
 
   const opConfig = {
     type: "operations",
@@ -117,6 +172,7 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
 
   operate(actionName, opConfig).queries((ctx) => {
     const exportSql = `EXPORT TABLE METADATA FROM ${fqTable}`;
+    const descriptionsSql = buildDescriptionsSql(fqTable, publishConfig);
 
     // CLUSTER BY: honra publishConfig.bigquery.clusterBy (traduzido pelo
     // cortex-build a partir de clusterDetails do table_settings); caso ausente,
@@ -161,7 +217,9 @@ ${connClause}
 ${optionsClause}
 AS
 ${selectSql}`;
-      return [createSql, exportSql];
+      return descriptionsSql
+        ? [createSql, descriptionsSql, exportSql]
+        : [createSql, exportSql];
     }
 
     // ---------- INCREMENTAL ----------
@@ -242,8 +300,12 @@ WHEN MATCHED THEN UPDATE SET
     ${updateSet}
 WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals})`;
 
-    return [createIfNotExists, mergeSql, exportSql];
+    // ALTER das descricoes vai APOS o CREATE (a tabela precisa existir) e ANTES do
+    // MERGE, para que uma falha de metadado nao ocorra depois da carga.
+    return descriptionsSql
+      ? [createIfNotExists, descriptionsSql, mergeSql, exportSql]
+      : [createIfNotExists, mergeSql, exportSql];
   });
 }
 
-module.exports = { isIceberg, buildStorageUri, publishProduct };
+module.exports = { isIceberg, buildStorageUri, buildDescriptionsSql, publishProduct };
