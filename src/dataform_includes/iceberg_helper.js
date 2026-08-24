@@ -68,6 +68,7 @@ function columnNames(publishConfig) {
 }
 
 function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
+  if (actionName.indexOf("universal_journal_entry_line") >= 0) { console.log("[DBG-COLS] " + JSON.stringify(publishConfig.columns).slice(0, 400)); }
   // NOTA: as configuracoes de layout NAO vem no tableConfig.
   // publishConfig.bigquery traz partitionBy/clusterBy ja traduzidos pelo cortex-build
   // a partir de partitionDetails/clusterDetails do table_settings.
