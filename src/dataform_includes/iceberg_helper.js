@@ -1,12 +1,12 @@
-/**
+﻿/**
  * Copyright 2026 Google LLC
  * Licensed under the Apache License, Version 2.0
  *
- * Iceberg helper for Cortex Framework — supports FULL REFRESH and INCREMENTAL.
+ * Iceberg helper for Cortex Framework â€” supports FULL REFRESH and INCREMENTAL.
  *
  * WHY THIS EXISTS:
  * The Dataform publish() API does NOT emit `WITH CONNECTION ... OPTIONS(table_format='ICEBERG')`
- * from a `bigquery.iceberg` config block — it silently creates a NATIVE BigQuery table.
+ * from a `bigquery.iceberg` config block â€” it silently creates a NATIVE BigQuery table.
  * This helper emits explicit Iceberg DDL/DML via a Dataform `operations` action.
  *
  * MODES (decided by tableConfig.materializationType):
@@ -38,7 +38,7 @@ function buildStorageUri(iceberg, tableName, productFolder) {
     const sub = iceberg.tableFolderSubpath ? iceberg.tableFolderSubpath.replace(/\/+$/, "") + "/" : "";
     return `gs://${bucket}/${root}${sub}${tableName}`;
   }
-  // Padrão novo: cortex_data_products/<produto>/<definition>
+  // PadrÃ£o novo: cortex_data_products/<produto>/<definition>
   return `gs://${bucket}/cortex_data_products/${productFolder}/${tableName}`;
 }
 
@@ -54,11 +54,11 @@ function buildStorageUri(iceberg, tableName, productFolder) {
  * comportamento identico ao anterior. Produto sem partitionDetails nao muda.
  *
  * IMPORTANTE: Iceberg gerenciado PERSISTE a particao. Para conferir, usar a UI do
- * BigQuery ou INFORMATION_SCHEMA.PARTITIONS — o campo .ddl de INFORMATION_SCHEMA.TABLES
+ * BigQuery ou INFORMATION_SCHEMA.PARTITIONS â€” o campo .ddl de INFORMATION_SCHEMA.TABLES
  * NAO renderiza a particao de tabelas Iceberg (so mostra CLUSTER BY).
  *
  * VALIDADO EM PROD: apenas DATE + DAY. As demais combinacoes seguem a sintaxe do
- * BigQuery mas ainda nao foram testadas em Iceberg gerenciado — testar isolado antes.
+ * BigQuery mas ainda nao foram testadas em Iceberg gerenciado â€” testar isolado antes.
  */
 function buildPartitionClause(details) {
   if (!details || !details.column) return "";
@@ -104,6 +104,10 @@ function columnNames(publishConfig) {
 }
 
 function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
+  // DEBUG TEMPORARIO
+  console.log("[DBG] " + actionName + " keys: " + JSON.stringify(Object.keys(tableConfig || {})));
+  console.log("[DBG] " + actionName + " part: " + JSON.stringify(tableConfig && tableConfig.partitionDetails));
+  console.log("[DBG] " + actionName + " clus: " + JSON.stringify(tableConfig && tableConfig.clusterDetails));
   if (!isIceberg(tableConfig)) {
     // Native Cortex behaviour (table / view / incremental).
     publish(actionName, publishConfig).query(queryFn);
@@ -195,11 +199,11 @@ ${selectSql}`;
     const selectFull = queryFn(shimContext(ctx, fqTable, /*incremental=*/false));
     const selectDelta = queryFn(shimContext(ctx, fqTable, /*incremental=*/true));
 
-    // OTIMIZAÇÃO DE CUSTO: a subquery correlacionada no filtro incremental
+    // OTIMIZAÃ‡ÃƒO DE CUSTO: a subquery correlacionada no filtro incremental
     // (recordstamp >= (SELECT MAX... FROM target)) impede o partition pruning do
-    // BigQuery — o MERGE lê a fonte quase inteira todo run. Materializar o watermark
-    // numa variável de script (DECLARE) antes do MERGE permite o pruning.
-    // Ganho medido: 5,5 GB -> 18,6 MB. Sem mudança de corretude (mesmo valor).
+    // BigQuery â€” o MERGE lÃª a fonte quase inteira todo run. Materializar o watermark
+    // numa variÃ¡vel de script (DECLARE) antes do MERGE permite o pruning.
+    // Ganho medido: 5,5 GB -> 18,6 MB. Sem mudanÃ§a de corretude (mesmo valor).
     // A subquery tem formato fixo gerado por incremental.getFilter (usando ctx.self()=fqTable).
     const watermarkSubquery = `(
       SELECT TIMESTAMP_SUB(
@@ -228,7 +232,7 @@ ${selectSql}`;
     const insertVals = cols.length > 0 ? cols.map(c => `S.\`${c}\``).join(", ") : null;
 
     // Two separate statements (NOT an IF/ELSE script), because BigQuery validates
-    // the whole script before running — a MERGE referencing a not-yet-created table
+    // the whole script before running â€” a MERGE referencing a not-yet-created table
     // would fail validation. Instead:
     //   1. CREATE TABLE IF NOT EXISTS ... AS SELECT ... WHERE FALSE  -> creates the
     //      Iceberg table with the correct schema on the first run; no-op afterwards.
@@ -271,6 +275,3 @@ WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals})`;
 module.exports = { isIceberg, buildStorageUri, buildPartitionClause, publishProduct };
 
 // DEBUG TEMPORARIO - remover antes do merge final
-console.log(`[DBG] ${actionName} tableConfig keys: ${JSON.stringify(Object.keys(tableConfig || {}))}`);
-console.log(`[DBG] ${actionName} partitionDetails: ${JSON.stringify(tableConfig && tableConfig.partitionDetails)}`);
-console.log(`[DBG] ${actionName} clusterDetails: ${JSON.stringify(tableConfig && tableConfig.clusterDetails)}`);
