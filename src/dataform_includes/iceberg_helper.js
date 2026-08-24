@@ -43,6 +43,42 @@ function buildStorageUri(iceberg, tableName, productFolder) {
 }
 
 /**
+ * Monta a clausula PARTITION BY a partir de partitionDetails do table_settings.
+ *
+ *   partitionDetails:
+ *     column: <nome_da_coluna>
+ *     partitionType: DATE | TIMESTAMP
+ *     timeGrain: DAY | MONTH | YEAR   (HOUR tambem para TIMESTAMP)
+ *
+ * Retorna "" quando ausente ou invalido -> fallback seguro: tabela sem particao,
+ * comportamento identico ao anterior. Produto sem partitionDetails nao muda.
+ *
+ * IMPORTANTE: Iceberg gerenciado PERSISTE a particao. Para conferir, usar a UI do
+ * BigQuery ou INFORMATION_SCHEMA.PARTITIONS — o campo .ddl de INFORMATION_SCHEMA.TABLES
+ * NAO renderiza a particao de tabelas Iceberg (so mostra CLUSTER BY).
+ *
+ * VALIDADO EM PROD: apenas DATE + DAY. As demais combinacoes seguem a sintaxe do
+ * BigQuery mas ainda nao foram testadas em Iceberg gerenciado — testar isolado antes.
+ */
+function buildPartitionClause(details) {
+  if (!details || !details.column) return "";
+  const col = `\`${details.column}\``;
+  const type = (details.partitionType || "DATE").toUpperCase();
+  const grain = (details.timeGrain || "DAY").toUpperCase();
+
+  if (type === "DATE") {
+    if (grain === "DAY") return `PARTITION BY ${col}`;
+    if (grain === "MONTH" || grain === "YEAR") return `PARTITION BY DATE_TRUNC(${col}, ${grain})`;
+    return "";
+  }
+  if (type === "TIMESTAMP") {
+    if (["HOUR", "DAY", "MONTH", "YEAR"].indexOf(grain) === -1) return "";
+    return `PARTITION BY TIMESTAMP_TRUNC(${col}, ${grain})`;
+  }
+  return "";
+}
+
+/**
  * Shim ctx for the operations context.
  * @param {boolean} incrementalMode whether incremental() should report true.
  */
@@ -114,19 +150,35 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   operate(actionName, opConfig).queries((ctx) => {
     const exportSql = `EXPORT TABLE METADATA FROM ${fqTable}`;
 
-    // CLUSTER BY pelas colunas-chave (uniqueKey) para pruning no MERGE Iceberg.
+    // CLUSTER BY: honra clusterDetails.columns do table_settings quando presente;
+    // caso contrario deriva das colunas-chave (uniqueKey), comportamento anterior.
     // BigQuery permite no maximo 4 colunas de clustering; pega as primeiras 4.
-    // Iceberg gerenciado NAO persiste PARTITION BY nesta versao — usar so CLUSTER BY.
-    const clusterKeys = (publishConfig.uniqueKey || []).slice(0, 4);
+    // Preferir o yaml evita gastar slot com coluna constante (ex.: client_mandt='400').
+    const clusterDetails = tableConfig.clusterDetails || {};
+    const clusterSource = (clusterDetails.columns && clusterDetails.columns.length > 0)
+      ? clusterDetails.columns
+      : (publishConfig.uniqueKey || []);
+    const clusterKeys = clusterSource.slice(0, 4);
     const clusterClause = clusterKeys.length > 0
       ? `CLUSTER BY ${clusterKeys.map(k => `\`${k}\``).join(", ")}`
       : "";
+
+    // PARTITION BY: honra partitionDetails do table_settings (ver buildPartitionClause).
+    // Ganho no CONSUMO (SELECT com filtro de data: 2,75 GB -> 20 MB medido em prod).
+    // NAO reduz o MERGE quando o gargalo e a leitura da tabela FONTE, porque o ON do
+    // MERGE e por chave e nao aciona a particao do target.
+    // Mudanca CREATE-time: tabela ja existente exige DROP + rerun para adotar.
+    const partitionClause = buildPartitionClause(tableConfig.partitionDetails);
+
+    // Ordem obrigatoria no DDL: PARTITION BY -> CLUSTER BY -> WITH CONNECTION -> OPTIONS.
+    const layoutClause =
+      `${partitionClause ? "\n" + partitionClause : ""}${clusterClause ? "\n" + clusterClause : ""}`;
 
     // ---------- FULL REFRESH ----------
     if (matType === "table") {
       const selectSql = queryFn(shimContext(ctx, fqTable, /*incremental=*/false));
       const createSql =
-        `CREATE OR REPLACE TABLE ${fqTable}${clusterClause ? "\n" + clusterClause : ""}
+        `CREATE OR REPLACE TABLE ${fqTable}${layoutClause}
 ${connClause}
 ${optionsClause}
 AS
@@ -160,6 +212,7 @@ ${selectSql}`;
     const selectDeltaVar = usesWatermark
       ? selectDelta.split(watermarkSubquery).join("_watermark")
       : selectDelta;
+
     const uniqueKeys = publishConfig.uniqueKey || [];
     if (uniqueKeys.length === 0) {
       throw new Error(
@@ -182,7 +235,7 @@ ${selectSql}`;
     //   2. MERGE ... -> always runs; the table is guaranteed to exist. On the first
     //      run the table is empty, so every row goes through WHEN NOT MATCHED (insert).
     const createIfNotExists =
-      `CREATE TABLE IF NOT EXISTS ${fqTable}${clusterClause ? "\n" + clusterClause : ""}
+      `CREATE TABLE IF NOT EXISTS ${fqTable}${layoutClause}
 ${connClause}
 ${optionsClause}
 AS
@@ -215,4 +268,4 @@ WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals})`;
   });
 }
 
-module.exports = { isIceberg, buildStorageUri, publishProduct };
+module.exports = { isIceberg, buildStorageUri, buildPartitionClause, publishProduct };
