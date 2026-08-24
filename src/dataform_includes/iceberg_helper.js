@@ -2,11 +2,11 @@
  * Copyright 2026 Google LLC
  * Licensed under the Apache License, Version 2.0
  *
- * Iceberg helper for Cortex Framework â€” supports FULL REFRESH and INCREMENTAL.
+ * Iceberg helper for Cortex Framework - supports FULL REFRESH and INCREMENTAL.
  *
  * WHY THIS EXISTS:
  * The Dataform publish() API does NOT emit `WITH CONNECTION ... OPTIONS(table_format='ICEBERG')`
- * from a `bigquery.iceberg` config block â€” it silently creates a NATIVE BigQuery table.
+ * from a `bigquery.iceberg` config block - it silently creates a NATIVE BigQuery table.
  * This helper emits explicit Iceberg DDL/DML via a Dataform `operations` action.
  *
  * MODES (decided by tableConfig.materializationType):
@@ -38,7 +38,7 @@ function buildStorageUri(iceberg, tableName, productFolder) {
     const sub = iceberg.tableFolderSubpath ? iceberg.tableFolderSubpath.replace(/\/+$/, "") + "/" : "";
     return `gs://${bucket}/${root}${sub}${tableName}`;
   }
-  // PadrÃ£o novo: cortex_data_products/<produto>/<definition>
+  // Padrao novo: cortex_data_products/<produto>/<definition>
   return `gs://${bucket}/cortex_data_products/${productFolder}/${tableName}`;
 }
 
@@ -68,11 +68,10 @@ function columnNames(publishConfig) {
 }
 
 function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
-  if (actionName.indexOf("universal_journal_entry_line") >= 0) { console.log("[DBG-COLS] " + JSON.stringify(publishConfig.columns).slice(0, 400)); }
   // NOTA: as configuracoes de layout NAO vem no tableConfig.
   // publishConfig.bigquery traz partitionBy/clusterBy ja traduzidos pelo cortex-build
   // a partir de partitionDetails/clusterDetails do table_settings.
-  // O tableConfig NAO carrega essas chaves — nao tentar ler de la.
+  // O tableConfig NAO carrega essas chaves - nao tentar ler de la.
   if (!isIceberg(tableConfig)) {
     // Native Cortex behaviour (table / view / incremental).
     publish(actionName, publishConfig).query(queryFn);
@@ -122,7 +121,8 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
     // CLUSTER BY: honra publishConfig.bigquery.clusterBy (traduzido pelo
     // cortex-build a partir de clusterDetails do table_settings); caso ausente,
     // deriva da uniqueKey. BigQuery permite no maximo 4 colunas de clustering.
-    // Preferir o clusterBy evita gastar slots com colunas constantes da uniqueKey.
+    // Preferir o clusterBy evita gastar slots com colunas constantes da uniqueKey
+    // (ex.: client_rclnt='400', ledger_in_general_ledger_accounting_rldnr).
     const pubBq = publishConfig.bigquery || {};
     const clusterSource = (pubBq.clusterBy && pubBq.clusterBy.length > 0)
       ? pubBq.clusterBy
@@ -133,14 +133,17 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
       : "";
 
     // PARTITION BY: honra publishConfig.bigquery.partitionBy, que ja vem como
-    // expressao SQL pronta (ex.: "DATE(coluna)") — interpolar direto.
-    // Ganho no CONSUMO (SELECT com filtro de data: 2,75 GB -> 20 MB medido em prod).
+    // expressao SQL pronta - interpolar direto.
+    // Ganho no CONSUMO (SELECT com filtro de data: 34,79 GB -> 72 MB medido em dev).
     // NAO reduz o MERGE quando o gargalo e a leitura da tabela FONTE, porque o ON do
     // MERGE e por chave e nao aciona a particao do target.
-    // Mudanca CREATE-time: tabela ja existente exige DROP + rerun para adotar.
+    // Mudanca CREATE-time: tabela ja existente exige DROP + rerun para adotar
+    // (e limpar o prefixo no GCS, que o DROP nao remove).
+    //
     // O cortex-build gera "DATE(coluna)" sem checar o tipo. Em coluna ja DATE isso
     // e invalido no BigQuery (DATE() so aceita TIMESTAMP/DATETIME). Como as colunas
     // de particao dos produtos SAP sao DATE, desembrulha para a coluna nua.
+    // O regex preserva DATE_TRUNC(...)/TIMESTAMP_TRUNC(...) intactos.
     const rawPartition = pubBq.partitionBy || "";
     const unwrapped = rawPartition.replace(/^DATE\(\s*([A-Za-z0-9_]+)\s*\)$/, "$1");
     const partitionClause = unwrapped ? `PARTITION BY ${unwrapped}` : "";
@@ -170,11 +173,11 @@ ${selectSql}`;
     const selectFull = queryFn(shimContext(ctx, fqTable, /*incremental=*/false));
     const selectDelta = queryFn(shimContext(ctx, fqTable, /*incremental=*/true));
 
-    // OTIMIZAÃ‡ÃƒO DE CUSTO: a subquery correlacionada no filtro incremental
+    // OTIMIZACAO DE CUSTO: a subquery correlacionada no filtro incremental
     // (recordstamp >= (SELECT MAX... FROM target)) impede o partition pruning do
-    // BigQuery â€” o MERGE lÃª a fonte quase inteira todo run. Materializar o watermark
-    // numa variÃ¡vel de script (DECLARE) antes do MERGE permite o pruning.
-    // Ganho medido: 5,5 GB -> 18,6 MB. Sem mudanÃ§a de corretude (mesmo valor).
+    // BigQuery - o MERGE le a fonte quase inteira todo run. Materializar o watermark
+    // numa variavel de script (DECLARE) antes do MERGE permite o pruning.
+    // Ganho medido: 5,5 GB -> 18,6 MB. Sem mudanca de corretude (mesmo valor).
     // A subquery tem formato fixo gerado por incremental.getFilter (usando ctx.self()=fqTable).
     const watermarkSubquery = `(
       SELECT TIMESTAMP_SUB(
@@ -203,7 +206,7 @@ ${selectSql}`;
     const insertVals = cols.length > 0 ? cols.map(c => `S.\`${c}\``).join(", ") : null;
 
     // Two separate statements (NOT an IF/ELSE script), because BigQuery validates
-    // the whole script before running â€” a MERGE referencing a not-yet-created table
+    // the whole script before running - a MERGE referencing a not-yet-created table
     // would fail validation. Instead:
     //   1. CREATE TABLE IF NOT EXISTS ... AS SELECT ... WHERE FALSE  -> creates the
     //      Iceberg table with the correct schema on the first run; no-op afterwards.
