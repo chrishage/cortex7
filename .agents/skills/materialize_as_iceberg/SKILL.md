@@ -372,6 +372,67 @@ List and size it **before** removing. There is no recycle bin in GCS — read th
 
 If the corporate proxy blocks `gcloud` locally (`ConnectTimeout` on `oauth2.googleapis.com` even when `Test-NetConnection … -Port 443` succeeds), run it from **Cloud Shell** in the browser — same commands, inside Google's network.
 
+### 3.13b Choosing partition and cluster columns for a SAP product
+
+Partition and cluster columns go in `table_settings.default.yaml` (`partitionDetails`/`clusterDetails`); the helper picks them up from there (3.10). Deciding *which* columns is a judgement call — this is the reasoning that has held up in this project.
+
+**First, decide whether to partition at all.** Partitioning helps CONSUMPTION, not the pipeline (3.7). It earns its rebuild only when: the table is large (tens of millions of rows or tens of GB), AND consumers filter it by a date, AND the distinct-day count fits under BigQuery's 4000-partition limit. If nobody filters by date, skip it — the rebuild costs a full source scan for certain and the benefit is zero.
+
+**Cluster columns: take the MERGE key, drop the constants.** The `uniqueKey` is what the MERGE matches on, so clustering by it is right in principle — but Cortex keys start with tenant/ledger columns that are single-valued in one landscape (`client_mandt`/`client_rclnt = '400'`, `ledger_rldnr`). Those waste slots, and there are only 4. Take the key, remove any column with one distinct value, keep the next four in key order (highest selectivity first is ideal, but key order is a safe default because it matches how the MERGE probes).
+
+Verify before committing — a column you assumed varies may not:
+
+```sql
+SELECT COUNT(DISTINCT <col>) FROM `<proj>.data_products.<table>`;
+```
+
+**Partition column: the posting date, almost always.** SAP tables carry many dates and they are not interchangeable. In order of usefulness as a partition key:
+
+| Column | SAP meaning | Verdict |
+|---|---|---|
+| `budat` (posting date) | when the document hit the ledger | **default choice** — what finance reporting filters on, dense, monotonic |
+| `bldat` (document date) | date printed on the document | usable, but can lag or lead `budat` and is sparser |
+| `erdat` / `aedat` (created / changed) | technical record dates | poor for reporting; useful only for audit-style products |
+| `netdt`, `zfbdt` (due / baseline) | payment scheduling dates | tempting for AR, but far-future values inflate the partition count |
+| `augdt` (clearing date) | when the item was cleared | **NULL for every open item** — a partition column that is null for the most-queried rows is the wrong choice |
+| `perop_beg` / `perop_end` | service period bounds | product-specific; only if the business actually filters on them |
+
+**Mapping the SAP field to the product's column name is a required step, not a formality.** Cortex renames every column: the SAP field `budat` becomes `posting_date_in_the_document_budat` in `universal_journal_entry_line_items` but `posting_date_budat` in `accounts_receivable` — same SAP field, different product, different name. The suffix keeps the SAP name, the prefix is the product's own description, and **the prefix is not standardized across products**.
+
+So the sequence is always:
+
+1. **Decide the SAP field on business grounds** (`budat` for posting date, per the table above).
+2. **Find its actual name in the product**, from the live table:
+```sql
+   SELECT column_name, data_type
+   FROM `<proj>.data_products`.INFORMATION_SCHEMA.COLUMNS
+   WHERE table_name = '<table>' AND data_type = 'DATE'
+   ORDER BY ordinal_position;
+```
+   Look for the entry ending in `_budat`. Confirm the `data_type` is `DATE` while you are here — it decides whether the `DATE(...)` wrapper is valid (3.11).
+3. **Cross-check against the definition** if anything is ambiguous — `src/data_modules/cortex/sap/products/<product>/definitions/s4/<table>.js` shows the `raw_col AS product_col` aliases, which is the authoritative mapping.
+4. **Write the product's column name** into `partitionDetails.column`, never the raw SAP field name. `partitionDetails: {column: budat}` would compile and then fail at run with `Unrecognized name: budat`.
+
+The same applies to `clusterDetails.columns`: those are the product's column names as they appear in the `getPublishConfig` key array — read them from the definition file, not from the SAP table.
+
+**Always run these three checks on the candidate before writing the yaml:**
+
+```sql
+SELECT COUNT(DISTINCT <col>) AS dias,
+       MIN(<col>) AS min_data,
+       MAX(<col>) AS max_data,
+       COUNTIF(<col> IS NULL) AS nulos
+FROM `<proj>.data_products.<table>`;
+```
+
+*   **`dias` must be well under 4000.** Measured: UJ 1055 days, AR 881 days — both comfortable. A column over the limit fails the CREATE outright.
+*   **A far-future `max_data` is a warning, not necessarily a blocker.** The UJ legitimately holds accrual dates out to 2036; that is real data, and it still fit. But a due-date column can stretch decades and blow the limit.
+*   **`nulos` matters.** Nulls land in the `__NULL__` partition, which works — but if a large share of rows is null, most of the table sits in one partition and pruning buys nothing. Prefer a column that is populated for the rows people query.
+
+**Granularity:** `DAY` is the only grain validated here on managed Iceberg. `MONTH`/`YEAR` (via `DATE_TRUNC`) are the escape hatch if a column exceeds 4000 days — the syntax is generated correctly by the helper, but test it in isolation first.
+
+**One more trap:** a query that wraps the partition column in a function (`EXTRACT(MONTH FROM col)`, `CAST(col AS STRING)`) defeats pruning entirely. If consumers write their filters that way, partitioning buys nothing — worth checking how the table is actually queried before rebuilding it.
+
 ### 3.14 The helper must apply column descriptions itself (native Cortex relies on `publish()`)
 
 `publishConfig.columns` arrives as an object `{column: description}`, populated from the product's `annotations/<version>/<table>.yaml`. In the **native** path `publish(actionName, publishConfig)` hands that object to Dataform, which applies the descriptions through the BigQuery **API** (`tables.patch`) after materializing — no SQL involved. `publish_config.js` only assembles the object; it emits no DDL.
