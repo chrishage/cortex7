@@ -267,7 +267,7 @@ A second, orthogonal cost lever is **frequency**: a large financial product set 
 
 `CREATE TABLE IF NOT EXISTS` never alters an existing table. So any change that lives in the CREATE — the column schema, the `uniqueKey`, the `CLUSTER BY`, the `PARTITION BY` — does NOT take effect on a table that already exists; the next incremental run keeps using the old table and the MERGE either fails (schema/key mismatch) or misses the optimization. Whenever you change any of these on a product that has already materialized, `DROP TABLE IF EXISTS <proj>.data_products.<product>;`, clean the GCS prefix (3.13), then re-run. `onSchemaChange: "EXTEND"` does NOT apply to the Iceberg path (the helper emits its own operations, bypassing Dataform's schema-extension mechanism).
 
-**Counter-example worth knowing:** column/table **descriptions** are NOT CREATE-time — `ALTER TABLE … SET OPTIONS(description=…)` works on an existing managed Iceberg table (verified in dev). Do not DROP a table just to add metadata. See 3.14.
+**Counter-example worth knowing:** column/table **descriptions** are NOT CREATE-time — `ALTER TABLE … SET OPTIONS(description=…)` works on an existing managed Iceberg table (verified in dev). The helper applies them on the next ordinary run; never DROP a table just to add metadata. See 3.14.
 
 ### 3.8 The biggest incremental-MERGE cost driver: a correlated subquery in the filter kills partition pruning
 
@@ -372,27 +372,32 @@ List and size it **before** removing. There is no recycle bin in GCS — read th
 
 If the corporate proxy blocks `gcloud` locally (`ConnectTimeout` on `oauth2.googleapis.com` even when `Test-NetConnection … -Port 443` succeeds), run it from **Cloud Shell** in the browser — same commands, inside Google's network.
 
-### 3.14 The helper DISCARDS column descriptions (annotations never reach BigQuery)
+### 3.14 The helper must apply column descriptions itself (native Cortex relies on `publish()`)
 
-`publishConfig.columns` arrives as an object `{column: description}`, populated from the product's `annotations/<version>/<table>.yaml`. Confirmed by `console.log` in `publishProduct`:
+`publishConfig.columns` arrives as an object `{column: description}`, populated from the product's `annotations/<version>/<table>.yaml`. In the **native** path `publish(actionName, publishConfig)` hands that object to Dataform, which applies the descriptions through the BigQuery **API** (`tables.patch`) after materializing — no SQL involved. `publish_config.js` only assembles the object; it emits no DDL.
 
-```
-{"client_rclnt":"Client, PK","company_code_rbukrs":"Company Code, PK", …}
-```
+The Iceberg helper uses `operate()` instead of `publish()`, so that mechanism never runs. Until this was fixed, **every Iceberg product shipped with zero column descriptions** while the annotations sat unused in the repo.
 
-But `columnNames()` does `Object.keys(cols)` and drops every value, and the emitted DDL carries no `description` — neither per column nor on the table (`publishConfig.description` goes to `opConfig`, which is Dataform metadata, not BigQuery DDL). Result: **every Iceberg product ships with zero column descriptions.** Verify with:
+**The fix** (in `buildDescriptionsSql`): a single `ALTER TABLE` carrying every column, appended to the statement array right after the CREATE. Key properties, each verified in dev:
+
+*   **One statement, not one per column.** `ALTER TABLE t ALTER COLUMN a SET OPTIONS(...), ALTER COLUMN b SET OPTIONS(...)` is valid. Scale is not a problem: `accounts_receivable` (491 columns) and `universal_journal_entry_line_items` (441) both applied in a single statement.
+*   **NOT a CREATE-time change.** `ALTER … SET OPTIONS(description=…)` works on an existing managed Iceberg table, so descriptions land on the next ordinary run — **no DROP+rerun**. This is the exception to the general rule above; do not destroy a table to add metadata.
+*   **Wrapped in `BEGIN … EXCEPTION WHEN ERROR THEN … END;`.** The ALTER is atomic: one column name that does not exist on the table fails the whole statement, which would abort an hourly production load over metadata. The handler turns that into a no-op that emits `[iceberg_helper] column descriptions skipped: <message>`. **Consequence: the job stays green when descriptions fail — grep the run log for `skipped:` to know.**
+*   **Escaping is mandatory.** Annotation text contains apostrophes and spans multiple lines; both break a single-quoted SQL literal. `sqlStr()` escapes `\` and `'` and flattens newlines to spaces.
+*   Products whose `columns` is an array of names (no descriptions) get `null` and no statement at all.
+
+**Table-level description** goes into the CREATE's `OPTIONS(… , description='…')`. Because `CREATE TABLE IF NOT EXISTS` is a no-op on an existing table, an incremental product only picks it up when the table is next recreated — column descriptions appear immediately, the table description does not. Verify separately via `INFORMATION_SCHEMA.TABLE_OPTIONS WHERE option_name='description'`.
+
+Verify the result with:
 
 ```sql
-SELECT column_name, description
+SELECT table_name, COUNT(*) AS cols_com_desc
 FROM `<proj>.data_products`.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
-WHERE table_name = '<table>' AND description IS NOT NULL;
+WHERE description IS NOT NULL
+GROUP BY 1 ORDER BY 2 DESC;
 ```
 
-**Not yet fixed.** The good news is that this does NOT need a rebuild: `ALTER TABLE … ALTER COLUMN … SET OPTIONS(description=…)` works on an existing managed Iceberg table (verified in dev on `sales_groups`). A fix would append those ALTERs to the statement array after the CREATE, plus `description=` inside the CREATE's `OPTIONS()`. Watch for single quotes/apostrophes in the annotation text — they must be escaped or the whole DDL breaks.
-
-**Caveat before blaming the helper:** a non-Iceberg product in the same dataset (`vendors`, which goes through Dataform's native `publish()`) is ALSO missing descriptions, and no table in `data_products` has any. So there may be a second cause upstream — possibly related to `external: true` on the SAP foundation, which makes the build log `Skipping metadata fetch and SQLX generation`. Diagnose both before assuming a helper fix will cover the whole dataset.
-
----
+**Unresolved, and separate from the helper:** a non-Iceberg product in the same dataset (`vendors`, which does go through `publish()`) is also missing descriptions, and before this fix no table in `data_products` had any — while `raw` tables are richly described (written by the AecorSoft replication, a different service account). So Dataform's `tables.patch` appears not to be landing in this project either; suspect an IAM gap on `sa-dataform-exec` (`bigquery.tables.update`). Fixing that would only help the few native products — Iceberg products need the ALTER regardless.
 
 ## Phase 3.9: The Three Validation Gates (why "it compiled" is not "it works")
 
