@@ -105,9 +105,9 @@ function columnNames(publishConfig) {
 
 function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
   // DEBUG TEMPORARIO
-  console.log("[DBG] " + actionName + " keys: " + JSON.stringify(Object.keys(tableConfig || {})));
-  console.log("[DBG] " + actionName + " part: " + JSON.stringify(tableConfig && tableConfig.partitionDetails));
-  console.log("[DBG] " + actionName + " clus: " + JSON.stringify(tableConfig && tableConfig.clusterDetails));
+  console.log("[DBG] " + actionName + " pubKeys: " + JSON.stringify(Object.keys(publishConfig || {})));
+  console.log("[DBG] " + actionName + " pubBq: " + JSON.stringify(publishConfig && publishConfig.bigquery));
+  console.log("[DBG] " + actionName + " uKey: " + JSON.stringify(publishConfig && publishConfig.uniqueKey));
   if (!isIceberg(tableConfig)) {
     // Native Cortex behaviour (table / view / incremental).
     publish(actionName, publishConfig).query(queryFn);
