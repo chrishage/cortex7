@@ -69,7 +69,7 @@ SELECT
   bkpf.budat AS posting_date_budat,
   bkpf.monat AS fiscal_period_monat,
   bkpf.cpudt AS entry_date_cpudt,
-  bkpf.cputm AS entry_time_cputm,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', bkpf.cputm)) AS entry_time_cputm,
   bkpf.usnam AS user_name_usnam,
   bkpf.tcode AS transaction_code_tcode,
   dimensional_date_bldat.cal_year AS year_of_document_date_bldat,

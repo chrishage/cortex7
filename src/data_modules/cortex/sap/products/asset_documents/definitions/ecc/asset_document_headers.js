@@ -55,7 +55,7 @@ SELECT
   anek.budat AS posting_date_budat,
   anek.monat AS fiscal_period_monat,
   anek.cpudt AS entry_date_cpudt,
-  anek.cputm AS entry_time_cputm,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', anek.cputm)) AS entry_time_cputm,
   anek.usnam AS user_name_usnam,
   anek.tcode AS transaction_code_tcode,
   anek.belnr AS accounting_document_number_belnr,

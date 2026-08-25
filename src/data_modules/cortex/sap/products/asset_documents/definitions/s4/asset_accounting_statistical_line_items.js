@@ -83,7 +83,7 @@ SELECT
   faat_doc_it.rkcur AS global_currency_rkcur,
   faat_doc_it.bldat AS document_date_bldat,
   faat_doc_it.cpudt AS entry_date_cpudt,
-  faat_doc_it.cputm AS entry_time_cputm,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', faat_doc_it.cputm)) AS entry_time_cputm,
   faat_doc_it.usnam AS user_name_usnam,
   faat_doc_it.tcode AS transaction_code_tcode,
   faat_doc_it.sgtxt AS text_sgtxt,

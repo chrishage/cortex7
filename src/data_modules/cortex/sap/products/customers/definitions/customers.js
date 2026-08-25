@@ -180,7 +180,7 @@ SELECT
   kna1.j_1kftind AS type_of_industry_j_1_kftind,
   kna1.confs AS status_of_change_authorization_confs,
   kna1.updat AS date_on_which_the_changes_were_confirmed_updat,
-  kna1.uptim AS time_of_last_change_confirmation_uptim,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', kna1.uptim)) AS time_of_last_change_confirmation_uptim,
   kna1.nodel AS central_deletion_block_for_master_record_nodel,
   kna1.dear6 AS indicator_consumer_dear6,
   kna1.cvp_xblck AS business_purpose_completed_flag_cvp_xblck,

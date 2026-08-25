@@ -84,7 +84,7 @@ SELECT
   ${currency.amountWithDecimalShift("wbrp.effwr", "currency_decimal")} AS effective_value_effwr,
   wbrp.ernam AS created_by_ernam,
   wbrp.erdat AS created_on_erdat,
-  wbrp.erzet AS time_erzet,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', wbrp.erzet)) AS time_erzet,
   wbrp.kowrr AS item_control_kowrr,
   wbrp.sktof AS cash_discount_sktof,
   ${currency.amountWithDecimalShift("wbrp.skfbp", "currency_decimal")} AS cash_discbasis_skfbp,

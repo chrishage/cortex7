@@ -47,7 +47,7 @@ SELECT
   ekes.lpein AS deliv_date_category_lpein,
   ekes.uzeit AS time_uzeit,
   ekes.erdat AS creation_date_erdat,
-  ekes.ezeit AS creation_time_ezeit,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', ekes.ezeit)) AS creation_time_ezeit,
   ekes.menge AS quantity_menge,
   ekes.dabmg AS quantity_reduced_mrp_dabmg,
   ekes.estkz AS creation_indicator_estkz,
@@ -66,7 +66,7 @@ SELECT
   ekes.vbeln_st AS delivery_vbeln_st,
   ekes.vbelp_st AS item_vbelp_st,
   ekes.handoverdate AS handover_date_handoverdate,
-  ekes.handovertime AS handover_time_handovertime,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', ekes.handovertime)) AS handover_time_handovertime,
   ekes.sgt_scat AS stock_segment_sgt_scat,
   ekes.fsh_salloc_qty AS allocated_stock_quantity_fsh_salloc_qty,
   IFNULL(

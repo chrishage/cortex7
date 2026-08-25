@@ -98,7 +98,7 @@ SELECT
   LFA1.J_1KFTBUS AS TypeOfBusiness_J_1KFTBUS, LFA1.J_1KFTIND AS TypeOfIndustry_J_1KFTIND,
   LFA1.CONFS AS StatusOfChangeAuthorization__central___CONFS,
   LFA1.UPDAT AS DateOnWhichTheChangesWereConfirmed_UPDAT,
-  LFA1.UPTIM AS TimeOfLastChangeConfirmation_UPTIM,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', LFA1.UPTIM)) AS TimeOfLastChangeConfirmation_UPTIM,
   LFA1.NODEL AS CentralDeletionBlockForMasterRecord_NODEL,
   LFA1.QSSYSDAT AS ValidityDateOfCertification_QSSYSDAT,
   LFA1.PODKZB AS VendorIndicatorRelevantForProofOfDelivery_PODKZB,

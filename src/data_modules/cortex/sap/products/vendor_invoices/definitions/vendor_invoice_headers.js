@@ -54,7 +54,7 @@ publish(moduleContext.moduleId + "_" + tableConfig.tableName, publishConfig).que
     rbkp.usnam AS user_name_usnam,
     rbkp.tcode AS transaction_code_tcode,
     rbkp.cpudt AS entry_date_cpudt,
-    rbkp.cputm AS entry_time_cputm,
+    TIMESTAMP(DATETIME(DATE '1970-01-01', rbkp.cputm)) AS entry_time_cputm,
     rbkp.vgart AS transaction_type_vgart,
     rbkp.xblnr AS reference_xblnr,
     rbkp.lifnr AS invoicing_party_lifnr,

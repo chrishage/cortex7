@@ -93,7 +93,7 @@ SELECT
   ${currency.amountWithDecimalShift("vbrk.netwr", "currency_decimal")} AS net_value_netwr,
   vbrk.zukri AS combination_criteria_zukri,
   vbrk.ernam AS created_by_ernam,
-  vbrk.erzet AS time_erzet,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', vbrk.erzet)) AS time_erzet,
   vbrk.erdat AS created_on_erdat,
   vbrk.stafo AS update_group_stats_stafo,
   vbrk.kunrg AS payer_kunrg,

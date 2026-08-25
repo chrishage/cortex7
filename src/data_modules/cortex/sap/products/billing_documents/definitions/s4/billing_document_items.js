@@ -122,7 +122,7 @@ SELECT
   vbrp.shkzg AS returns_shkzg,
   vbrp.ernam AS created_by_ernam,
   vbrp.erdat AS created_on_erdat,
-  vbrp.erzet AS time_erzet,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', vbrp.erzet)) AS time_erzet,
   vbrp.bwtar AS valuation_type_bwtar,
   vbrp.lgort AS storage_location_lgort,
   vbrp.stafo AS update_group_stats_stafo,
