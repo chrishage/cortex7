@@ -48,7 +48,7 @@ iceberg_helper.publishProduct(
   moduleContext.moduleId + "_" + tableConfig.tableName,
   publishConfig,
   tableConfig,
-  ctx) => `
+  (ctx) => `
 SELECT
   SO.mandt AS client_mandt,
   SO.vbelv AS sales_order_vbelv,
