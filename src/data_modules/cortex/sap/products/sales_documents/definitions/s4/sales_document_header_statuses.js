@@ -86,6 +86,7 @@ SELECT
   vbak.manek AS manual_completion_of_contract_manek,
   vbak.cmps_cm AS status_of_credit_check_sap_credit_management_cmps_cm,
   vbak.cmps_te AS status_of_technical_error_sap_credit_management_cmps_te,
+  vbak.erdat AS creation_date_erdat,
   IFNULL(
     vbak.recordstamp,
     TIMESTAMP('1900-01-01 00:00:00+00')
