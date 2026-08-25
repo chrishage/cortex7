@@ -412,4 +412,4 @@ ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["lips"])
 ])}
 `
-);
+));
