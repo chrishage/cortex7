@@ -116,12 +116,34 @@ EXCEPTION WHEN ERROR THEN
 END;`;
 }
 
+/**
+ * Extrai o nome NU da coluna de particao a partir do partitionBy do publishConfig.
+ *
+ * O cortex-build entrega expressoes: "DATE(col)", "DATE_TRUNC(col, MONTH)", "col".
+ * O pruning do MERGE precisa do NOME da coluna para montar o predicado BETWEEN
+ * sobre o target. So se aplica quando a expressao referencia uma unica coluna
+ * simples; para qualquer forma nao reconhecida retorna null e o pruning e
+ * desligado (fallback seguro).
+ */
+function partitionColumnName(partitionBy) {
+  if (!partitionBy) return null;
+  const expr = String(partitionBy).trim();
+  let m = expr.match(/^DATE\(\s*([A-Za-z0-9_]+)\s*\)$/);
+  if (m) return m[1];
+  m = expr.match(/^(?:DATE_TRUNC|TIMESTAMP_TRUNC|DATETIME_TRUNC)\(\s*([A-Za-z0-9_]+)\s*,/);
+  if (m) return m[1];
+  m = expr.match(/^([A-Za-z0-9_]+)$/);
+  if (m) return m[1];
+  return null;
+}
+
 function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
-  if (actionName.indexOf("universal_journal_entry_line") >= 0) { console.log("[DBG-BQ] " + JSON.stringify(publishConfig.bigquery)); }
   // NOTA: as configuracoes de layout NAO vem no tableConfig.
   // publishConfig.bigquery traz partitionBy/clusterBy ja traduzidos pelo cortex-build
   // a partir de partitionDetails/clusterDetails do table_settings.
   // O tableConfig NAO carrega essas chaves - nao tentar ler de la.
+  // Chaves nao reconhecidas pelo cortex-build (ex.: partitionDetails.sources) passam
+  // na validacao do yaml mas sao DESCARTADAS: nao chegam ao publishConfig.
   if (!isIceberg(tableConfig)) {
     // Native Cortex behaviour (table / view / incremental).
     publish(actionName, publishConfig).query(queryFn);
@@ -191,9 +213,8 @@ function publishProduct(actionName, publishConfig, tableConfig, queryFn) {
 
     // PARTITION BY: honra publishConfig.bigquery.partitionBy, que ja vem como
     // expressao SQL pronta - interpolar direto.
-    // Ganho no CONSUMO (SELECT com filtro de data: 34,79 GB -> 72 MB medido em dev).
-    // NAO reduz o MERGE quando o gargalo e a leitura da tabela FONTE, porque o ON do
-    // MERGE e por chave e nao aciona a particao do target.
+    // Ganho no CONSUMO (SELECT com filtro de data: 34,79 GB -> 72 MB medido em dev)
+    // E TAMBEM no MERGE, desde que o ON receba um predicado de data (ver adiante).
     // Mudanca CREATE-time: tabela ja existente exige DROP + rerun para adotar
     // (e limpar o prefixo no GCS, que o DROP nao remove).
     //
@@ -257,12 +278,69 @@ ${selectSql}`;
     }
     const cols = columnNames(publishConfig);
 
-    const onClause = uniqueKeys.map(k => `T.\`${k}\` = S.\`${k}\``).join(" AND ");
+    const keyOnClause = uniqueKeys.map(k => `T.\`${k}\` = S.\`${k}\``).join(" AND ");
     const updateSet = cols.length > 0
       ? cols.map(c => `T.\`${c}\` = S.\`${c}\``).join(",\n    ")
       : null;
     const insertCols = cols.length > 0 ? cols.map(c => `\`${c}\``).join(", ") : null;
     const insertVals = cols.length > 0 ? cols.map(c => `S.\`${c}\``).join(", ") : null;
+
+    // ---------- PARTITION PRUNING DO MERGE ----------
+    // O `ON` de um MERGE por chave NAO aciona a particao do target: o BigQuery varre
+    // a tabela inteira para casar as chaves. Numa tabela de 370M linhas isso domina o
+    // custo (medido em prod: 612 GB por run do universal_journal).
+    //
+    // A correcao e dar ao planner um predicado sobre a COLUNA DE PARTICAO do target.
+    // Calculamos os limites de data do proprio delta em variaveis de script (constantes
+    // no plano, como o watermark) e adicionamos um BETWEEN como PRIMEIRA condicao do ON.
+    // Medido em prod numa query equivalente: 612 GB -> ~25 GB (~25x).
+    //
+    // PREMISSA DE CORRETUDE - LEIA ANTES DE MEXER:
+    // O BETWEEN faz o MERGE casar SOMENTE linhas cuja coluna de particao esteja no
+    // intervalo do lote. Isso e seguro apenas se a coluna for IMUTAVEL por chave: se o
+    // valor mudar entre cargas, a linha existente fica fora do intervalo, o MERGE nao a
+    // encontra e faz INSERT -> DUPLICATA SILENCIOSA.
+    // Verificado em prod para budat (data de lancamento contabil, imutavel apos o
+    // posting): zero chaves com budat divergente nos ultimos 30 dias de CDC e no
+    // exercicio 2026 inteiro. Monitorar com a checagem n == n_keys da Phase 6.
+    //
+    // CUSTO: o SET faz uma passada extra sobre o delta lendo UMA coluna. Os limites
+    // sao calculados sobre o selectDelta (o SELECT do produto) porque o helper NAO
+    // conhece a tabela fonte nem o nome da coluna nela - e a chave que declararia isso
+    // no yaml (partitionDetails.sources) e descartada pelo cortex-build.
+    //
+    // Condicoes para ativar (todas obrigatorias; qualquer uma falsa -> MERGE inalterado):
+    //   1. o target e particionado (partitionClause presente);
+    //   2. a expressao de particao referencia uma unica coluna simples;
+    //   3. o filtro incremental usa watermark (senao o "delta" e a tabela toda e os
+    //      limites cobririam todo o historico, tornando o BETWEEN inutil).
+    const partitionCol = partitionClause ? partitionColumnName(unwrapped) : null;
+    const usesPruning = !!(partitionCol && usesWatermark);
+
+    const boundsDeclare = usesPruning
+      ? `
+  DECLARE _part_min DATE;
+  DECLARE _part_max DATE;
+  SET (_part_min, _part_max) = (
+    SELECT AS STRUCT
+      MIN(\`${partitionCol}\`),
+      MAX(\`${partitionCol}\`)
+    FROM (
+${selectDeltaVar}
+    )
+  );`
+      : "";
+
+    // COALESCE nos limites: se o delta vier VAZIO, MIN/MAX retornam NULL e o BETWEEN
+    // nunca casaria - o MERGE faria INSERT de tudo. Com o fallback aberto o predicado
+    // fica sempre verdadeiro e o comportamento volta a ser o de sempre (sem pruning,
+    // mas correto). Delta vazio significa nenhuma linha a inserir de qualquer forma.
+    const pruningPredicate = usesPruning
+      ? `T.\`${partitionCol}\` BETWEEN COALESCE(_part_min, DATE '0001-01-01') AND COALESCE(_part_max, DATE '9999-12-31')
+   AND `
+      : "";
+
+    const onClause = `${pruningPredicate}${keyOnClause}`;
 
     // Two separate statements (NOT an IF/ELSE script), because BigQuery validates
     // the whole script before running - a MERGE referencing a not-yet-created table
@@ -282,7 +360,7 @@ ${selectFull}
 
     const mergeSql = usesWatermark
       ? `BEGIN
-  DECLARE _watermark TIMESTAMP DEFAULT ${watermarkSubquery};
+  DECLARE _watermark TIMESTAMP DEFAULT ${watermarkSubquery};${boundsDeclare}
   MERGE ${fqTable} T
 USING (
 ${selectDeltaVar}
@@ -309,4 +387,10 @@ WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals})`;
   });
 }
 
-module.exports = { isIceberg, buildStorageUri, buildDescriptionsSql, publishProduct };
+module.exports = {
+  isIceberg,
+  buildStorageUri,
+  buildDescriptionsSql,
+  partitionColumnName,
+  publishProduct
+};
