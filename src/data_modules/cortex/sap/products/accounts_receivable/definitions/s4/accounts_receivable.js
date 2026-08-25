@@ -43,6 +43,58 @@ iceberg_helper.publishProduct(
   publishConfig,
   tableConfig,
   (ctx) => `
+-- OTIMIZACAO DE CUSTO (pruning de particao nas fontes).
+-- As tres raw sao particionadas por data (acdoca.budat, bkpf.budat, bseg.h_budat).
+-- O filtro incremental (GREATEST dos recordstamp) e avaliado DEPOIS dos JOINs, entao
+-- sem estes CTEs o BigQuery materializa as ~500 colunas das tres tabelas inteiras.
+-- Medido em prod: 828 GB -> 137 GB (~6x), com conjunto de chaves IDENTICO
+-- (validado com EXCEPT DISTINCT nos dois sentidos: 0 diferencas).
+-- datas_delta une as datas das TRES fontes, preservando a semantica do GREATEST:
+-- um documento alterado so no bkpf/bseg continua entrando.
+-- NAO simplificar de volta para JOINs diretos - o custo volta a 828 GB.
+WITH datas_delta AS (
+  SELECT budat AS d
+  FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "acdoca")}
+  WHERE recordstamp >= (
+      SELECT TIMESTAMP_SUB(
+        IFNULL(MAX(source_last_updated_at), TIMESTAMP("1900-12-25 05:30:00+00")),
+        INTERVAL 30 MINUTE
+      )
+      FROM ${ctx.self()}
+    )
+  UNION DISTINCT
+  SELECT budat
+  FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "bkpf")}
+  WHERE recordstamp >= (
+      SELECT TIMESTAMP_SUB(
+        IFNULL(MAX(source_last_updated_at), TIMESTAMP("1900-12-25 05:30:00+00")),
+        INTERVAL 30 MINUTE
+      )
+      FROM ${ctx.self()}
+    )
+  UNION DISTINCT
+  SELECT h_budat
+  FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "bseg")}
+  WHERE recordstamp >= (
+      SELECT TIMESTAMP_SUB(
+        IFNULL(MAX(source_last_updated_at), TIMESTAMP("1900-12-25 05:30:00+00")),
+        INTERVAL 30 MINUTE
+      )
+      FROM ${ctx.self()}
+    )
+),
+acdoca_f AS (
+  SELECT * FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "acdoca")}
+  WHERE budat IN (SELECT d FROM datas_delta)
+),
+bkpf_f AS (
+  SELECT * FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "bkpf")}
+  WHERE budat IN (SELECT d FROM datas_delta)
+),
+bseg_f AS (
+  SELECT * FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "bseg")}
+  WHERE h_budat IN (SELECT d FROM datas_delta)
+)
 SELECT
   acdoca.rclnt AS client_rclnt,
   acdoca.rldnr AS ledger_rldnr,
@@ -540,15 +592,15 @@ SELECT
   ) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
 FROM
-  ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "acdoca")} AS acdoca
+  acdoca_f AS acdoca
 INNER JOIN
-  ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "bkpf")} AS bkpf
+  bkpf_f AS bkpf
   ON acdoca.rclnt = bkpf.mandt
   AND acdoca.rbukrs = bkpf.bukrs
   AND acdoca.gjahr = bkpf.gjahr
   AND acdoca.belnr = bkpf.belnr
 LEFT JOIN
-  ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "bseg")} AS bseg
+  bseg_f AS bseg
   ON acdoca.rclnt = bseg.mandt
   AND acdoca.rbukrs = bseg.bukrs
   AND acdoca.gjahr = bseg.gjahr
