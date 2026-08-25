@@ -23,8 +23,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: posting_date_budat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, transactional, daily]
   material_movement_types:
     materializationType: incremental
@@ -47,7 +53,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: posting_date_budat
     dataformTags: [sap, supply_chain, source_aligned_product, sap_mm, transactional, daily]
     bigquery:

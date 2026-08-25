@@ -12,8 +12,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
   sales_document_items_ext:
     materializationType: incremental
@@ -25,8 +31,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
 s4:
   sales_document_headers_ext:
@@ -39,7 +51,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
     bigquery:
@@ -57,7 +70,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
     bigquery:

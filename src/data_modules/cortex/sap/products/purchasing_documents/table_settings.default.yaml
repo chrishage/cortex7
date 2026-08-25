@@ -33,6 +33,11 @@ ecc:
       value: sap_mm
     - key: data_class
       value: transactional
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, supply_chain, sap_mm, source_aligned_product, 
         transactional, daily]
   purchasing_document_schedule_lines:
@@ -111,6 +116,11 @@ s4:
       value: sap_mm
     - key: data_class
       value: transactional
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, supply_chain, sap_mm, source_aligned_product, 
         transactional, daily]
   purchasing_document_schedule_lines:
