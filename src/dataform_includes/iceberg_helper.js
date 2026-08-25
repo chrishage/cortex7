@@ -316,6 +316,7 @@ ${selectSql}`;
     //      limites cobririam todo o historico, tornando o BETWEEN inutil).
     const partitionCol = partitionClause ? partitionColumnName(unwrapped) : null;
     const usesPruning = !!(partitionCol && usesWatermark);
+    if (actionName.indexOf("universal_journal_entry_line") >= 0) { console.log("[DBG-P] pClause=" + JSON.stringify(partitionClause) + " unwrap=" + JSON.stringify(unwrapped) + " pCol=" + JSON.stringify(partitionCol) + " wm=" + usesWatermark); }
 
     const boundsDeclare = usesPruning
       ? `
