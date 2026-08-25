@@ -41,7 +41,7 @@ iceberg_helper.publishProduct(
   moduleContext.moduleId + "_" + tableConfig.tableName,
   publishConfig,
   tableConfig,
-  (ctx) => `
+  ctx) => `
 WITH 
   date_dimension AS (
     ${date.getDateDimension()}
@@ -295,4 +295,4 @@ ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["vbrp"])
 ])}
 `,
-));
+);
