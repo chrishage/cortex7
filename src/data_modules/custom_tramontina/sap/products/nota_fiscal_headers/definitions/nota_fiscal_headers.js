@@ -28,6 +28,7 @@ SELECT
   j_1bnfdoc.nfnum AS nota_fiscal_number_nfnum,
   j_1bnfdoc.nftype AS nota_fiscal_type_nftype,
   j_1bnfdoc.docdat AS document_date_docdat,
+  j_1bnfdoc.pstdat AS posting_date_pstdat,
   j_1bnfdoc.nfenum AS nfe_number_nfenum,
   j_1bnfdoc.cancel AS cancel_flag_cancel,
   j_1bnfe_active.model AS nfe_model_model,

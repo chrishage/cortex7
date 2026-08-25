@@ -22,6 +22,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: created_on_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, monthly]
   billing_document_items:
     materializationType: incremental
@@ -32,6 +35,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: created_on_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, monthly]
   billing_blocking_reasons:
     materializationType: incremental
@@ -58,6 +64,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: created_on_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, monthly]
   billing_document_items:
     materializationType: incremental
@@ -68,6 +77,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: created_on_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, monthly]
     bigquery:
       iceberg:

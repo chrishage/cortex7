@@ -1,12 +1,12 @@
 fields:
   - name: client_mandt
-    description: 'client_mandt'
+    description: 'Client'
   - name: billing_type_fkart
-    description: 'billing_type_fkart'
+    description: 'Billing Type'
   - name: language_key_spras
-    description: 'language_key_spras'
+    description: 'Language Key'
   - name: billing_type_name_vtext
-    description: 'billing_type_name_vtext'
+    description: 'Billing Type Name'
   - name: source_last_updated_at
     description: 'Auditoria de carga (patrón Cortex).'
   - name: bq_loaded_at

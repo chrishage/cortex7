@@ -15,6 +15,10 @@ fields:
     description: Incoterms Part 1 (VBKD-INCO1)
   - name: customer_payment_terms_zterm
     description: Terms of Payment Key (VBKD-ZTERM)
+  - name: subtotal_5_kzwi5
+    description: Subtotal 5 from pricing procedure for condition (KZWI5)
+  - name: creation_date_erdat
+    description: 'Creation Date'
   - name: source_last_updated_at
     description: Source Last Updated At
   - name: bq_loaded_at

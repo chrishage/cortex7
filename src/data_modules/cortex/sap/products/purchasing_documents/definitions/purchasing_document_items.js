@@ -39,6 +39,17 @@ publish(moduleContext.moduleId + "_" + tableConfig.tableName, publishConfig).que
   (ctx) => `
 WITH currency_decimal as (
   ${currency.currencyDecimalShift(ctx.ref(moduleConfig.sources.sapModule.datasetId, "tcurx"))}
+),
+datas_delta AS (
+  SELECT aedat AS d FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, 'ekpo')} AS ekpo WHERE ${incremental.getFilter(ctx, ["ekpo"])}
+  UNION DISTINCT
+  SELECT aedat      FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, 'ekko')} AS ekko WHERE ${incremental.getFilter(ctx, ["ekko"])}
+),
+ekpo_f AS (
+  SELECT * FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, 'ekpo')} WHERE aedat IN (SELECT d FROM datas_delta)
+),
+ekko_f AS (
+  SELECT * FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, 'ekko')} WHERE aedat IN (SELECT d FROM datas_delta)
 )
 SELECT
   ekpo.mandt as client_mandt,
@@ -314,9 +325,9 @@ SELECT
   ) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
 FROM
-  ${ctx.ref(moduleConfig.sources.sapModule.datasetId, 'ekpo')} as ekpo
+  ekpo_f as ekpo
 LEFT JOIN
-  ${ctx.ref(moduleConfig.sources.sapModule.datasetId, 'ekko')} as ekko
+  ekko_f as ekko
   ON ekpo.mandt = ekko.mandt
   AND ekpo.ebeln = ekko.ebeln
 LEFT JOIN currency_decimal

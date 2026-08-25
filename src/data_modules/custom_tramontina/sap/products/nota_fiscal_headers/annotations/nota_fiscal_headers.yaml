@@ -1,42 +1,44 @@
 fields:
   - name: client_mandt
-    description: 'client_mandt'
+    description: 'Client'
   - name: nota_fiscal_document_docnum
-    description: 'nota_fiscal_document_docnum'
+    description: 'Nota Fiscal Document'
   - name: company_code_bukrs
-    description: 'company_code_bukrs'
+    description: 'Company Code'
   - name: billing_document_belnr
-    description: 'billing_document_belnr'
+    description: 'Billing Document'
   - name: nota_fiscal_number_nfnum
-    description: 'nota_fiscal_number_nfnum'
+    description: 'Nota Fiscal Number'
   - name: nota_fiscal_type_nftype
-    description: 'nota_fiscal_type_nftype'
+    description: 'Nota Fiscal Type'
   - name: document_date_docdat
-    description: 'document_date_docdat'
+    description: 'Document Date'
+  - name: posting_date_pstdat
+    description: 'Posting Date'
   - name: nfe_number_nfenum
-    description: 'nfe_number_nfenum'
+    description: 'NFe Number'
   - name: cancel_flag_cancel
-    description: 'cancel_flag_cancel'
+    description: 'Cancel Flag'
   - name: nfe_model_model
-    description: 'nfe_model_model'
+    description: 'NFe Model Model'
   - name: nfe_series_serie
-    description: 'nfe_series_serie'
+    description: 'NFe Series'
   - name: nfe_document_status_docsta
-    description: 'nfe_document_status_docsta'
+    description: 'NFe Document Status'
   - name: nfe_authorization_protocol_authcod
-    description: 'nfe_authorization_protocol_authcod'
+    description: 'NFe Authorization Protocol'
   - name: nfe_authorization_date_authdate
-    description: 'nfe_authorization_date_authdate'
+    description: 'NFe Authorization Date'
   - name: nfe_environment_type_tpamb
-    description: 'nfe_environment_type_tpamb'
+    description: 'NFe Environment Type'
   - name: nfe_emission_type_tpemis
-    description: 'nfe_emission_type_tpemis'
+    description: 'NFe Emission Type'
   - name: nfe_access_key
-    description: 'nfe_access_key'
+    description: 'NFe Access Key'
   - name: currency_waerk
-    description: 'currency_waerk'
+    description: 'Currency'
   - name: region_regio
-    description: 'region_regio'
+    description: 'Region'
   - name: source_last_updated_at
     description: 'Auditoria de carga (patrón Cortex).'
   - name: bq_loaded_at

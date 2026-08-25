@@ -1,14 +1,14 @@
 fields:
   - name: client_mandt
-    description: 'client_mandt'
+    description: 'Client'
   - name: incoterms_classification_inco1
-    description: 'incoterms_classification_inco1'
+    description: 'Incoterms Classification'
   - name: language_key_spras
-    description: 'language_key_spras'
+    description: 'Language Key'
   - name: incoterms_classification_name_bezei
-    description: 'incoterms_classification_name_bezei'
+    description: 'Incoterms Classification Name'
   - name: incoterms_location_mandatory_ortob
-    description: 'incoterms_location_mandatory_ortob'
+    description: 'Incoterms Location Mandatory'
   - name: source_last_updated_at
     description: 'Auditoria de carga (patrón Cortex).'
   - name: bq_loaded_at

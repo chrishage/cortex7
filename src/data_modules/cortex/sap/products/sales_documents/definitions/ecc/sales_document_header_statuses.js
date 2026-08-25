@@ -117,15 +117,18 @@ SELECT
   vbuk.hdall AS inbound_delivery_header_not_yet_complete_on_hold_hdall,
   vbuk.hdals AS at_least_one_of_id_items_not_yet_complete_on_hold_hdals,
   vbuk.vbtyp_ext AS extension_of_sd_document_category_vbtyp_ext,
-  IFNULL(
-    vbuk.recordstamp,
-    TIMESTAMP('1900-01-01 00:00:00+00')
+  vbak.erdat AS creation_date_erdat,
+  GREATEST(
+    IFNULL(vbuk.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')),
+    IFNULL(vbak.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
   ) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
 FROM
   ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbuk")} AS vbuk
+LEFT JOIN ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbak")} AS vbak
+  ON vbuk.mandt = vbak.mandt AND vbuk.vbeln = vbak.vbeln
 ${sql_helper.buildDynamicWhere([
-  incremental.getFilter(ctx, ["vbuk"])
+  incremental.getFilter(ctx, ["vbuk", "vbak"])
 ])}
 `,
 );

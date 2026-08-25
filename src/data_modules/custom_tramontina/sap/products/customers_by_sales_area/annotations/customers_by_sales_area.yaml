@@ -1,50 +1,50 @@
 fields:
   - name: client_mandt
-    description: 'client_mandt'
+    description: 'Client'
   - name: customer_number_kunnr
-    description: 'customer_number_kunnr'
+    description: 'Customer Number'
   - name: sales_organization_vkorg
-    description: 'sales_organization_vkorg'
+    description: 'Sales Organization'
   - name: distribution_channel_vtweg
-    description: 'distribution_channel_vtweg'
+    description: 'Distribution Channel'
   - name: division_spart
-    description: 'division_spart'
+    description: 'Division'
   - name: sales_district_bzirk
-    description: 'sales_district_bzirk'
+    description: 'Sales District'
   - name: sales_group_vkgrp
-    description: 'sales_group_vkgrp'
+    description: 'Sales Group'
   - name: sales_office_vkbur
-    description: 'sales_office_vkbur'
+    description: 'Sales Office'
   - name: customer_group_kdgrp
-    description: 'customer_group_kdgrp'
+    description: 'Customer Group'
   - name: customer_group_1_kvgr1
-    description: 'customer_group_1_kvgr1'
+    description: 'Customer Group 1'
   - name: customer_group_2_kvgr2
-    description: 'customer_group_2_kvgr2'
+    description: 'Customer Group 2'
   - name: customer_group_3_kvgr3
-    description: 'customer_group_3_kvgr3'
+    description: 'Customer Group 3'
   - name: customer_group_4_kvgr4
-    description: 'customer_group_4_kvgr4'
+    description: 'Customer Group 4'
   - name: customer_group_5_kvgr5
-    description: 'customer_group_5_kvgr5'
+    description: 'Customer Group 5'
   - name: price_group_konda
-    description: 'price_group_konda'
+    description: 'Price Group'
   - name: price_list_type_pltyp
-    description: 'price_list_type_pltyp'
+    description: 'Price List Type'
   - name: customer_statistics_group_versg
-    description: 'customer_statistics_group_versg'
+    description: 'Customer Statistics Group'
   - name: incoterms_classification_inco1
-    description: 'incoterms_classification_inco1'
+    description: 'Incoterms Classification'
   - name: terms_of_payment_zterm
-    description: 'terms_of_payment_zterm'
+    description: 'Terms Of Payment'
   - name: currency_waers
-    description: 'currency_waers'
+    description: 'Currency'
   - name: delivery_priority_lprio
-    description: 'delivery_priority_lprio'
+    description: 'Delivery Priority'
   - name: customer_pricing_procedure_kalks
-    description: 'customer_pricing_procedure_kalks'
+    description: 'Customer Pricing Procedure'
   - name: deletion_flag_loevm
-    description: 'deletion_flag_loevm'
+    description: 'Deletion Flag'
   - name: source_last_updated_at
     description: 'Auditoria de carga (patrón Cortex).'
   - name: bq_loaded_at

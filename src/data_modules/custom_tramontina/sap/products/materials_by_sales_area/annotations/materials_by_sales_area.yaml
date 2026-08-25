@@ -1,42 +1,42 @@
 fields:
   - name: client_mandt
-    description: 'client_mandt'
+    description: 'Client'
   - name: material_number_matnr
-    description: 'material_number_matnr'
+    description: 'Material Number'
   - name: sales_organization_vkorg
-    description: 'sales_organization_vkorg'
+    description: 'Sales Organization'
   - name: distribution_channel_vtweg
-    description: 'distribution_channel_vtweg'
+    description: 'Distribution Channel'
   - name: distr_chain_material_status_vmsta
-    description: 'distr_chain_material_status_vmsta'
+    description: 'Distr Chain Material Status'
   - name: distr_chain_material_status_valid_from_vmstd
-    description: 'distr_chain_material_status_valid_from_vmstd'
+    description: 'Distr Chain Material Status Valid From'
   - name: delivering_plant_dwerk
-    description: 'delivering_plant_dwerk'
+    description: 'Delivering Plant'
   - name: material_pricing_group_kondm
-    description: 'material_pricing_group_kondm'
+    description: 'Material Pricing Group'
   - name: material_statistics_group_versg
-    description: 'material_statistics_group_versg'
+    description: 'Material Statistics Group'
   - name: product_hierarchy_prodh
-    description: 'product_hierarchy_prodh'
+    description: 'Product Hierarchy'
   - name: material_group_1_mvgr1
-    description: 'material_group_1_mvgr1'
+    description: 'Material Group 1'
   - name: material_group_2_mvgr2
-    description: 'material_group_2_mvgr2'
+    description: 'Material Group 2'
   - name: material_group_3_mvgr3
-    description: 'material_group_3_mvgr3'
+    description: 'Material Group 3'
   - name: material_group_4_mvgr4
-    description: 'material_group_4_mvgr4'
+    description: 'Material Group 4'
   - name: material_group_5_mvgr5
-    description: 'material_group_5_mvgr5'
+    description: 'Material Group 5'
   - name: sales_unit_vrkme
-    description: 'sales_unit_vrkme'
+    description: 'Sales Unit'
   - name: item_category_group_mtpos
-    description: 'item_category_group_mtpos'
+    description: 'Item Category Group'
   - name: account_assignment_group_ktgrm
-    description: 'account_assignment_group_ktgrm'
+    description: 'Account Assignment Group'
   - name: deletion_flag_lvorm
-    description: 'deletion_flag_lvorm'
+    description: 'Deletion Flag'
   - name: source_last_updated_at
     description: 'Auditoria de carga (patrón Cortex).'
   - name: bq_loaded_at
