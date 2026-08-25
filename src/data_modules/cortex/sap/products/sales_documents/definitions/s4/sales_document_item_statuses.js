@@ -39,7 +39,7 @@ iceberg_helper.publishProduct(
   moduleContext.moduleId + "_" + tableConfig.tableName,
   publishConfig,
   tableConfig,
-  ctx) => `
+  (ctx) => `
 SELECT
   vbap.mandt AS client_mandt,
   vbap.vbeln AS sales_document_vbeln,
