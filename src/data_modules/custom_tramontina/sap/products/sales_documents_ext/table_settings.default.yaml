@@ -11,6 +11,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
   sales_document_items_ext:
     materializationType: incremental
@@ -21,6 +24,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
 s4:
   sales_document_headers_ext:
@@ -32,6 +38,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
     bigquery:
       iceberg:
@@ -47,6 +56,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
     bigquery:
       iceberg:

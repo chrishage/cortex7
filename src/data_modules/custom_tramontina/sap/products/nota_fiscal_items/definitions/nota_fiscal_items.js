@@ -23,6 +23,7 @@ iceberg_helper.publishProduct(
 SELECT
   j_1bnflin.mandt AS client_mandt,
   j_1bnflin.docnum AS nota_fiscal_document_docnum,
+  j_1bnflin.docnum_date AS docnum_date_docnum_date,
   j_1bnflin.itmnum AS nota_fiscal_item_itmnum,
   j_1bnflin.matnr AS material_number_matnr,
   j_1bnflin.charg AS batch_charg,

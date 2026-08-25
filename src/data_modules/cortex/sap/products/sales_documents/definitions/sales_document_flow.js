@@ -57,6 +57,7 @@ SELECT
   Deliveries.posnv AS delivery_item_posnv,
   Deliveries.vbeln AS billing_vbeln,
   Deliveries.posnn AS billing_item_posnn,
+  SO.erdat AS creation_date_erdat,
   SO.rfmng AS delivered_qty_rfmng,
   SO.meins AS delivered_uom_meins,
   Deliveries.rfmng AS billed_qty_rfmng,

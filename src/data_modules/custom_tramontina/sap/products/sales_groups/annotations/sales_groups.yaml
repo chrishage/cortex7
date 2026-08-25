@@ -1,12 +1,12 @@
 fields:
   - name: client_mandt
-    description: 'client_mandt'
+    description: 'Client'
   - name: sales_group_vkgrp
-    description: 'sales_group_vkgrp'
+    description: 'Sales Group'
   - name: language_key_spras
-    description: 'language_key_spras'
+    description: 'Language Key'
   - name: sales_group_name_bezei
-    description: 'sales_group_name_bezei'
+    description: 'Sales Group Name'
   - name: source_last_updated_at
     description: 'Auditoria de carga (patrón Cortex).'
   - name: bq_loaded_at

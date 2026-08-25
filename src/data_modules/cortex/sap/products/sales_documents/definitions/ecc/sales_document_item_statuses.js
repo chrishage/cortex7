@@ -77,15 +77,18 @@ SELECT
   vbup.pdsta AS pod_status_on_item_level_pdsta,
   vbup.manek AS manual_completion_of_contract_manek,
   vbup.hdall AS inbound_delivery_item_not_yet_complete_on_hold_hdall,
-  IFNULL(
-    vbup.recordstamp,
-    TIMESTAMP('1900-01-01 00:00:00+00')
+  vbak.erdat AS creation_date_erdat,
+  GREATEST(
+    IFNULL(vbup.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')),
+    IFNULL(vbak.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
   ) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
 FROM
   ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbup")} AS vbup
+LEFT JOIN ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbak")} AS vbak
+  ON vbup.mandt = vbak.mandt AND vbup.vbeln = vbak.vbeln
 ${sql_helper.buildDynamicWhere([
-  incremental.getFilter(ctx, ["vbup"])
+  incremental.getFilter(ctx, ["vbup", "vbak"])
 ])}
 `,
 );

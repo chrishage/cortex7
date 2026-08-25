@@ -22,6 +22,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_items:
     materializationType: incremental
@@ -32,6 +35,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_schedule_lines:
     materializationType: incremental
@@ -62,6 +68,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_item_statuses:
     materializationType: incremental
@@ -72,6 +81,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_flow:
     materializationType: incremental
@@ -82,6 +94,9 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     filters:
       preceding_document_categories: ['C']
@@ -97,6 +112,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     bigquery:
       iceberg:
@@ -112,6 +130,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     bigquery:
       iceberg:
@@ -157,6 +178,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     bigquery:
       iceberg:
@@ -172,6 +196,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     bigquery:
       iceberg:
@@ -187,6 +214,9 @@ s4:
       value: sap_sd
     - key: data_class
       value: transactional
+    partitionDetails:
+      partitionType: time
+      column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     filters:
       preceding_document_categories: ['C']

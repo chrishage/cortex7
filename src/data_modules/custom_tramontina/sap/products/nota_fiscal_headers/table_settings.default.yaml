@@ -9,6 +9,12 @@ ecc:
     - key: data_class
       value: transactional
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
+    partitionDetails:
+      partitionType: time
+      column: posting_date_pstdat
+    clusterDetails:
+      columns:
+        - nota_fiscal_document_docnum
 s4:
   nota_fiscal_headers:
     materializationType: incremental
@@ -20,6 +26,12 @@ s4:
     - key: data_class
       value: transactional
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
+    partitionDetails:
+      partitionType: time
+      column: posting_date_pstdat
+    clusterDetails:
+      columns:
+        - nota_fiscal_document_docnum
     bigquery:
       iceberg:
         connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn

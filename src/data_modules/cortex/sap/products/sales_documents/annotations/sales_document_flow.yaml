@@ -31,7 +31,9 @@ fields:
   - name: billing_vbeln
     description: Subsequent Billing Document Number, PK, PK
   - name: billing_item_posnn
-    description: Subsequent Billing Document Item Number, PK, PK
+    description: 'Billing Item'
+  - name: creation_date_erdat
+    description: 'Creation Date'
   - name: delivered_qty_rfmng
     description: Delivered Quantity in Sales Units
   - name: delivered_uom_meins
