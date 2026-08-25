@@ -21,7 +21,9 @@ const moduleConfig = config.product[moduleContext.moduleId];
 const materializationType = tableConfig.materializationType || "incremental";
 const incremental = require("includes/incremental.js");
 const publish_config = require("includes/publish_config.js");
+const iceberg_helper = require("includes/iceberg_helper.js");
 const sql_helper = require("includes/sql_helper.js");
+const iceberg_helper = require("includes/iceberg_helper.js");
 
 const publishConfig = publish_config.getPublishConfig(
   materializationType,
@@ -33,7 +35,11 @@ const publishConfig = publish_config.getPublishConfig(
   ]
 );
 
-publish(moduleContext.moduleId + "_" + tableConfig.tableName, publishConfig).query(
+iceberg_helper.publishProduct(
+  moduleContext.moduleId + "_" + tableConfig.tableName,
+  publishConfig,
+  tableConfig,
+  (
   (ctx) => `
 SELECT
   vbuk.mandt AS client_mandt,

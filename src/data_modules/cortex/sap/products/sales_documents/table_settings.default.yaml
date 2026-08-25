@@ -23,8 +23,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_items:
     materializationType: incremental
@@ -36,8 +42,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_schedule_lines:
     materializationType: incremental
@@ -69,8 +81,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_item_statuses:
     materializationType: incremental
@@ -82,8 +100,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
   sales_document_flow:
     materializationType: incremental
@@ -95,8 +119,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     filters:
       preceding_document_categories: ['C']
@@ -113,7 +143,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     bigquery:
@@ -131,7 +162,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     bigquery:
@@ -179,7 +211,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     bigquery:
@@ -197,7 +230,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     bigquery:
@@ -215,7 +249,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, hourly]
     filters:

@@ -23,8 +23,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, daily]
   delivery_document_items:
     materializationType: incremental
@@ -36,8 +42,14 @@ ecc:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, daily]
   delivery_blocking_reasons:
     materializationType: incremental
@@ -60,7 +72,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, daily]
     bigquery:
@@ -78,7 +91,8 @@ s4:
     - key: data_class
       value: transactional
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: creation_date_erdat
     dataformTags: [sap, sales, sap_sd, source_aligned_product, transactional, daily]
     bigquery:

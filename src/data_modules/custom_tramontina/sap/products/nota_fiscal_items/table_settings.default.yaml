@@ -8,9 +8,15 @@ ecc:
       value: sap_sd
     - key: data_class
       value: transactional
+    bigquery:
+      iceberg:
+        connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
+        bucketName: tra-cortex-iceberg-dev
+        fileFormat: PARQUET
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: docnum_date_docnum_date
     clusterDetails:
       columns:
@@ -27,7 +33,8 @@ s4:
       value: transactional
     dataformTags: [sap, sales, sap_sd, custom_tramontina, transactional, hourly]
     partitionDetails:
-      partitionType: time
+      partitionType: DATE
+      timeGrain: DAY
       column: docnum_date_docnum_date
     clusterDetails:
       columns:
