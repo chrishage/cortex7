@@ -23,7 +23,6 @@ const currency = require("includes/currency.js");
 const date = require("includes/date.js");
 const incremental = require("includes/incremental.js");
 const publish_config = require("includes/publish_config.js");
-const iceberg_helper = require("includes/iceberg_helper.js");
 const sql_helper = require("includes/sql_helper.js");
 const iceberg_helper = require("includes/iceberg_helper.js");
 
