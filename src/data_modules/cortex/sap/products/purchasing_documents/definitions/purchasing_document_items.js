@@ -341,4 +341,4 @@ ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["ekpo", "ekko"])
 ])}
 `,
-);
+));

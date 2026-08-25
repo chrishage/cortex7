@@ -84,4 +84,4 @@ ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["SO", "Deliveries"])
 ])}
 `,
-);
+));

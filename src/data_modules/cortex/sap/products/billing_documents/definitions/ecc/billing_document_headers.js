@@ -194,4 +194,4 @@ ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["vbrk"])
 ])}
 `,
-);
+));
