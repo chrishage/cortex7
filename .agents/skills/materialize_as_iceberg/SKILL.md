@@ -253,7 +253,7 @@ Note this is a cortex-standard product, edited in `src/data_modules/cortex/.../s
 An incremental Iceberg product's `MERGE ... ON T.key = S.key` scans the **entire target table** to match keys when the table has no clustering — there is nothing to prune. On large tables (tens of GB) run hourly, this dominates BigQuery cost. In this project three cortex financial products (`prcd_elements`, `universal_journal_entry_line_items`, `accounts_receivable`) generated ~$400/week almost entirely from unpruned MERGE scans.
 
 Hard facts, each validated in this environment (do not assume — the Iceberg-managed feature set changes):
-*   **`PARTITION BY` DOES persist on BigQuery-managed Iceberg tables.** An earlier version of this skill claimed the opposite — that was a **measurement error**: `INFORMATION_SCHEMA.TABLES.ddl` does NOT render the partition for Iceberg tables (it shows only the `CLUSTER BY`), so reading back the DDL made it look absent. Verify partitioning in the **BigQuery UI** (table → Details) or via `INFORMATION_SCHEMA.PARTITIONS` — **never** from `.ddl`. Confirmed in dev: `universal_journal_entry_line_items` shows *Partitioned by DAY* on `posting_date_in_the_document_budat`. See 3.10–3.11 for how the clause actually reaches the helper, and note that partitioning the **target** does NOT reduce MERGE cost when the bottleneck is reading the **source** table (the MERGE's `ON` is by key, not by date, so the target's partition is never pruned).
+*   **`PARTITION BY` DOES persist on BigQuery-managed Iceberg tables.** An earlier version of this skill claimed the opposite — that was a **measurement error**: `INFORMATION_SCHEMA.TABLES.ddl` does NOT render the partition for Iceberg tables (it shows only the `CLUSTER BY`), so reading back the DDL made it look absent. Verify partitioning in the **BigQuery UI** (table → Details) or via `INFORMATION_SCHEMA.PARTITIONS` — **never** from `.ddl`. Confirmed in dev: `universal_journal_entry_line_items` shows *Partitioned by DAY* on `posting_date_in_the_document_budat`. See 3.10–3.11 for how the clause actually reaches the helper, and note that Partitioning the target only pays off when the ON carries a predicate on the partition column — see 3.15. Without it the partition is never pruned and the MERGE scans the whole target; with it, universal_journal went from 612 GB to 28 GB per run.
 *   **`CLUSTER BY` works** and is Google's recommended pruning mechanism for managed Iceberg. Measured effect on a real filtered scan: 453 MB → 89 MB (~80% reduction).
 *   **Syntax position is load-bearing:** the order is `PARTITION BY` → `CLUSTER BY` → `WITH CONNECTION` → `OPTIONS`. Full shape: `CREATE TABLE <t> PARTITION BY <expr> CLUSTER BY <cols> WITH CONNECTION <c> OPTIONS(...) AS ...`. Placing either clause after `WITH CONNECTION` (as native BigQuery allows) is a syntax error on the Iceberg path.
 
@@ -460,6 +460,71 @@ GROUP BY 1 ORDER BY 2 DESC;
 
 **Unresolved, and separate from the helper:** a non-Iceberg product in the same dataset (`vendors`, which does go through `publish()`) is also missing descriptions, and before this fix no table in `data_products` had any — while `raw` tables are richly described (written by the AecorSoft replication, a different service account). So Dataform's `tables.patch` appears not to be landing in this project either; suspect an IAM gap on `sa-dataform-exec` (`bigquery.tables.update`). Fixing that would only help the few native products — Iceberg products need the ALTER regardless.
 
+### 3.15 MERGE pruning: two separate levers, TARGET and SOURCE
+
+An incremental MERGE reads two things, and each needs its own fix. Diagnose which one dominates before writing any code — they look identical from the outside and the wrong fix buys nothing.
+
+**Lever 1 — prune the TARGET, via a partition predicate in the `ON`.**
+
+`ON T.key = S.key` never touches the target's partitioning: BigQuery scans the whole table to match keys. Adding a predicate on the target's *partition column* as the first `ON` condition gives the planner something to prune with. The helper does this automatically when the target is partitioned and the incremental filter uses a watermark (see the `_part_min`/`_part_max` block in `iceberg_helper.js`):
+
+```sql
+ON T.`posting_date_in_the_document_budat`
+     BETWEEN COALESCE(_part_min, DATE '0001-01-01') AND COALESCE(_part_max, DATE '9999-12-31')
+   AND T.`client_rclnt` = S.`client_rclnt` AND …
+```
+
+Measured on `universal_journal_entry_line_items` in prod: **612 GB → 28 GB (22×)**.
+
+**Lever 2 — prune the SOURCE, via CTEs that filter each raw table on its own partition column.**
+
+This one the helper cannot do: it receives the product SELECT as an opaque string and knows nothing about the source tables. It must be written into the product's `.js`.
+
+It matters when the incremental filter is evaluated *after* JOINs — the `GREATEST(a.recordstamp, b.recordstamp, c.recordstamp)` pattern of multi-source products. BigQuery then materialises every column of all three tables before filtering anything. Pre-filtering each source in a CTE, on the partition column, avoids that:
+
+```sql
+WITH datas_delta AS (
+  SELECT budat AS d   FROM <raw.acdoca> WHERE recordstamp >= <watermark>
+  UNION DISTINCT
+  SELECT budat        FROM <raw.bkpf>   WHERE recordstamp >= <watermark>
+  UNION DISTINCT
+  SELECT h_budat      FROM <raw.bseg>   WHERE recordstamp >= <watermark>
+),
+acdoca_f AS (SELECT * FROM <raw.acdoca> WHERE budat   IN (SELECT d FROM datas_delta)),
+bkpf_f   AS (SELECT * FROM <raw.bkpf>   WHERE budat   IN (SELECT d FROM datas_delta)),
+bseg_f   AS (SELECT * FROM <raw.bseg>   WHERE h_budat IN (SELECT d FROM datas_delta))
+SELECT … FROM acdoca_f AS acdoca INNER JOIN bkpf_f AS bkpf … LEFT JOIN bseg_f AS bseg …
+```
+
+Measured on `accounts_receivable` in prod: **828 GB → 137 GB** in the prototype, **778 GB → 186 GB** in the live MERGE (~4×).
+
+**Which lever applies — measure, don't guess.** Compare a source read with and without the partition filter, using `SELECT *` (never `COUNT(*)` — it reads almost nothing and hides the effect, which is exactly the width of the scan you are trying to reduce):
+
+```sql
+SELECT * FROM <raw.table> WHERE recordstamp >= _wm;                          -- baseline
+SELECT * FROM <raw.table> WHERE budat IN (SELECT …) AND recordstamp >= _wm;  -- pruned
+```
+
+If the two are equal, lever 2 buys nothing — the `recordstamp` filter already reduced the read as far as it goes. That is the case for `universal_journal` (14.43 GB both ways, single source, no JOIN forcing early materialisation) and it is why only `accounts_receivable` got the CTEs.
+
+**Implementation notes for lever 2:**
+
+*   `IN (subquery)` is **not allowed inside a JOIN predicate** (`IN subquery is not supported inside join predicate`). Put the filter in a CTE and join the CTE instead.
+*   A CTE with `IN (SELECT …)` prunes as well as a `DECLARE`d array does (137 GB vs 131 GB measured) — so the product SELECT, which cannot declare variables, is not at a disadvantage.
+*   The watermark inside the CTEs must be written as the **exact string** the helper looks for (see `watermarkSubquery`), including double quotes and indentation, so `selectDelta.split(…).join("_watermark")` catches it. If it doesn't match, the query is still correct — it just won't prune.
+*   Build `datas_delta` from **all** sources, not just the largest. Filtering only on the main table's dates silently drops documents changed via a header/detail table: in this environment 189 `bkpf` rows per cycle had no matching `acdoca` change.
+
+**Prove equivalence before shipping — this changes what a financial product loads.** Run both versions and diff the key sets in both directions:
+
+```sql
+SELECT (SELECT COUNT(*) FROM (SELECT k FROM nova  EXCEPT DISTINCT SELECT k FROM atual)) AS so_na_nova,
+       (SELECT COUNT(*) FROM (SELECT k FROM atual EXCEPT DISTINCT SELECT k FROM nova))  AS so_na_atual;
+```
+
+Both must be 0. **Use the product's full `uniqueKey` in `k`** — an incomplete key produces a fake 2:1 duplication and a false alarm (ACDOCA carries one row per ledger, `0L` and `2L`, so omitting `ledger_rldnr` doubles every count).
+
+Also verify the date columns agree across sources before filtering them all on one list (`WHERE a.budat != k.budat` must return 0), and re-verify the immutability premise from 3.15's target lever.
+
 ## Phase 3.9: The Three Validation Gates (why "it compiled" is not "it works")
 
 Every bug in this project was caught by exactly one of three gates, and each gate is blind to the classes of error the next one catches. Treat the chain as mandatory and in order; **never commit or merge on the strength of an earlier gate alone.**
@@ -559,6 +624,15 @@ Run the standard quality gate from `create-data-product` / `update-data-product`
 *   **A product cannot materialize in an environment where its `raw` source does not exist.** Before promoting products to a new environment (e.g. prod), confirm every source `raw` table is present there — the replication (AecorSoft CDC) must have loaded them first. Compare environments with an `EXCEPT DISTINCT` over `INFORMATION_SCHEMA.TABLES` of each `raw` dataset. A missing source surfaces at run as `Unrecognized name` / table-not-found; it is a data-availability prerequisite, not a code bug.
 *   Iceberg restructure decisions (e.g. changing the bucket layout) are often made **dev-first**; do not assume prod should be changed in the same step. Confirm scope with the user before touching prod buckets or objects.
 *   **Partitioning helps CONSUMPTION, not the pipeline.** Before spending a rebuild on it, check who actually reads the table and how. `INFORMATION_SCHEMA.JOBS_BY_PROJECT` filtered to `statement_type='SELECT'` and grouped by `user_email` shows BigQuery-side consumption; if the external engine (Databricks) reads the Iceberg files straight from GCS, those reads do NOT appear there and the question must go to that team. A rebuild costs a full source scan for certain; the benefit should not be assumed.
+
+*   **Cost is driven by scan WIDTH, not row count — and the two MERGE levers are independent.** In this environment the incremental deltas are tiny (72k/3.8k/12.8k rows for `accounts_receivable`'s three sources) while the MERGE read 778 GB: the cost was reading ~500 columns of three whole tables, not the delta itself. Two fixes apply, and which one helps depends on the product's shape — measure with `SELECT *`, never `COUNT(*)`, because a `COUNT(*)` reads almost nothing and makes every version look cheap. Results after both fixes in prod:
+
+| Product | Before | After | Which lever worked |
+|---|---|---|---|
+| `universal_journal_entry_line_items` | 612 GB | 28 GB | target only (`ON` predicate) — source pruning gave 0 (14.43 GB either way) |
+| `accounts_receivable` | 778 GB | 186 GB | both — source CTEs did the work, `GREATEST` over three tables was forcing full materialisation |
+
+    Frequency compounds with this: `universal_journal` at hourly is 24 runs/day (~670 GB) against 4 runs/day on a 6-hourly schedule (~112 GB). Before optimising a product's SQL, check whether the business actually needs the current cadence — the two levers multiply.
 
 ---
 
