@@ -38,7 +38,7 @@ iceberg_helper.publishProduct(
   moduleContext.moduleId + "_" + tableConfig.tableName,
   publishConfig,
   tableConfig,
-  (
+  
   (ctx) => `
 SELECT
   vbuk.mandt AS client_mandt,
@@ -136,4 +136,4 @@ ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["vbuk", "vbak"])
 ])}
 `,
-));
+);

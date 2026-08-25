@@ -40,7 +40,7 @@ iceberg_helper.publishProduct(
   moduleContext.moduleId + "_" + tableConfig.tableName,
   publishConfig,
   tableConfig,
-  (
+  
   (ctx) => `
 WITH currency_decimal as (
   ${currency.currencyDecimalShift(ctx.ref(moduleConfig.sources.sapModule.datasetId, "tcurx"))}
@@ -341,4 +341,4 @@ ${sql_helper.buildDynamicWhere([
   incremental.getFilter(ctx, ["ekpo", "ekko"])
 ])}
 `,
-));
+);
