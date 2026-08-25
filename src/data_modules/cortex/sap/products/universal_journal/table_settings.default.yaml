@@ -29,6 +29,9 @@ s4:
       column: posting_date_in_the_document_budat
       partitionType: DATE
       timeGrain: DAY
+      sources:
+      - table: acdoca
+        column: budat      
     bigquery:
       iceberg:
         connection: tra-prd-cortex-aecorsoft.US.cortex_iceberg_conn
