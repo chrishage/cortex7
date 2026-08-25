@@ -168,7 +168,7 @@ SELECT
   KNA1.J_1KFTIND AS TypeOfIndustry_J_1KFTIND,
   KNA1.CONFS AS StatusOfChangeAuthorization_CONFS,
   KNA1.UPDAT AS DateOnWhichTheChangesWereConfirmed_UPDAT,
-  KNA1.UPTIM AS TimeOfLastChangeConfirmation_UPTIM,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', KNA1.UPTIM)) AS TimeOfLastChangeConfirmation_UPTIM,
   KNA1.NODEL AS CentralDeletionBlockForMasterRecord_NODEL,
   KNA1.DEAR6 AS Indicator_Consumer_DEAR6,
   KNA1.CVP_XBLCK AS BusinessPurposeCompletedFlag_CVP_XBLCK,

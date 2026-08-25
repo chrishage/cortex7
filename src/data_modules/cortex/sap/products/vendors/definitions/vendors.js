@@ -134,7 +134,7 @@ SELECT
   lfa1.j_1kftind as type_of_industry_j_1_kftind,
   lfa1.confs as status_of_change_authorization_central_confs,
   lfa1.updat as date_on_which_the_changes_were_confirmed_updat,
-  lfa1.uptim as time_of_last_change_confirmation_uptim,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', lfa1.uptim)) AS time_of_last_change_confirmation_uptim,
   lfa1.nodel as central_deletion_block_for_master_record_nodel,
   lfa1.qssysdat as validity_date_of_certification_qssysdat,
   lfa1.podkzb as vendor_indicator_relevant_for_proof_of_delivery_podkzb,

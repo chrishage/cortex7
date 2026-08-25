@@ -74,7 +74,7 @@ SELECT
   ekbe.lfpos AS reference_document_item_lfpos,
   ekbe.grund AS reason_for_movement_grund,
   ekbe.cpudt AS entry_date_cpudt,
-  ekbe.cputm AS time_of_entry_cputm,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', ekbe.cputm)) AS time_of_entry_cputm,
   ${currency.amountWithDecimalShift("ekbe.reewr", "currency_decimal_hswae")} AS invoice_value_reewr,
   ekbe.evere AS compliance_with_shipping_instr_evere,
   ${currency.amountWithDecimalShift("ekbe.refwr", "currency_decimal_waers")} AS invoice_value_in_fc_refwr,

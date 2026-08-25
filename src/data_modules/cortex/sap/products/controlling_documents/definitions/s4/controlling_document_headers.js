@@ -73,7 +73,7 @@ SELECT
   cobk.awtyp AS reference_procedure_awtyp,
   cobk.aworg AS reference_organizational_unit_aworg,
   cobk.logsystem AS logical_system_logsystem,
-  cobk.cputm AS time_of_entry_cputm,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', cobk.cputm)) AS time_of_entry_cputm,
   cobk.alebz AS posting_rows_external_alebz,
   cobk.alebn AS ale_original_document_number_alebn,
   cobk.awsys AS logical_system_source_awsys,

@@ -59,7 +59,7 @@ SELECT
   -- ekbe.LFPOS AS ItemOfAReferenceDocument_LFPOS,
   -- ekbe.GRUND AS ReasonForMovement_GRUND,
   -- ekbe.CPUDT AS DayOnWhichAccountingDocumentWasEntered_CPUDT,
-  -- ekbe.CPUTM AS TimeOfEntry_CPUTM,
+  -- TIMESTAMP(DATETIME(DATE '1970-01-01', ekbe.CPUTM)) AS TimeOfEntry_CPUTM,
   -- ekbe.EVERE AS ComplianceWithShippingInstructions_EVERE,
   -- ekbe.REFWR AS InvoiceValueInForeignCurrency_REFWR,
   -- ekbe.MATNR AS MaterialNumber_MATNR,

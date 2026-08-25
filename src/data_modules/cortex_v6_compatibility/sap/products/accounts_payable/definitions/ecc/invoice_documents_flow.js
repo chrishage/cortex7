@@ -263,7 +263,7 @@ SELECT
   RBKP.usnam AS UserName_USNAM,
   RBKP.tcode AS TransactionCode_TCODE,
   RBKP.cpudt AS EnteredOn_CPUDT,
-  RBKP.cputm AS Enteredat_CPUTM,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', RBKP.cputm)) AS Enteredat_CPUTM,
   RBKP.vgart AS TransactnType_VGART,
   RBKP.xblnr AS Reference_XBLNR,
   RBKP.lifnr AS InvoicingParty_LIFNR,

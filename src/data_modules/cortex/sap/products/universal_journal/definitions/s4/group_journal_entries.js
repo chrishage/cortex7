@@ -105,7 +105,7 @@ SELECT
   acdocu.refactiv AS reference_transaction_refactiv,
   acdocu.timestamp AS timestamp_timestamp,
   acdocu.cpudt AS entry_date_cpudt,
-  acdocu.cputm AS entry_time_cputm,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', acdocu.cputm)) AS entry_time_cputm,
   acdocu.usnam AS user_name_usnam,
   acdocu.rvsdocnr AS reversal_document_number_rvsdocnr,
   acdocu.orndocnr AS original_document_number_orndocnr,

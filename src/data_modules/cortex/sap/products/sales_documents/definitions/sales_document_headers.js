@@ -52,7 +52,7 @@ SELECT
   vbak.mandt AS client_mandt,
   vbak.vbeln AS document_number_vbeln,
   vbak.erdat AS creation_date_erdat,
-  vbak.erzet AS creation_time_erzet,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', vbak.erzet)) AS creation_time_erzet,
   vbak.ernam AS created_by_ernam,
   vbak.angdt AS quotation_date_from_angdt,
   vbak.bnddt AS quotation_date_to_bnddt,

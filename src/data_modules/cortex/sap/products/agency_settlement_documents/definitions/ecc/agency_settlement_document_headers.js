@@ -66,7 +66,7 @@ SELECT
   wbrk.vtweg AS distribution_channel_vtweg,
   wbrk.spart AS division_spart,
   wbrk.bukrs AS company_code_bukrs,
-  wbrk.erzet AS time_erzet,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', wbrk.erzet)) AS time_erzet,
   wbrk.erdat AS created_on_erdat,
   wbrk.ernam AS created_by_ernam,
   wbrk.aedat AS changed_on_aedat,

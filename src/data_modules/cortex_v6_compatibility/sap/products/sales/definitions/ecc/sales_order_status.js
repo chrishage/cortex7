@@ -57,7 +57,7 @@ SELECT
   vbuk.LFGSK AS HeaderDeliveryStatus_LFGSK,
   vbup.WBSTA AS GoodsMovementStatus_WBSTA,
   vbak.ERDAT AS CreationDate_ERDAT,
-  vbak.ERZET AS CreationTime_ERZET,
+  TIMESTAMP(DATETIME(DATE '1970-01-01', vbak.ERZET)) AS CreationTime_ERZET,
   vbak.VDATU AS RequestedDeliveryDate_VDATU,
   vbak.AUTLF AS CompleteDeliveryFlag_AUTLF,
   lips.VBELN AS Delivery_VBELN,
