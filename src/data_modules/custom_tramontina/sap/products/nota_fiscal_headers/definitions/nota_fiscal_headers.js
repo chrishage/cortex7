@@ -52,8 +52,8 @@ LEFT JOIN (
 ) AS j_1bnfe_active
   ON j_1bnfdoc.mandt = j_1bnfe_active.mandt AND j_1bnfdoc.docnum = j_1bnfe_active.docnum
 ${sql_helper.buildDynamicWhere([
-  incremental.getFilter(ctx, ["j_1bnfdoc", "j_1bnfe_active"])
+  incremental.getFilter(ctx, ["j_1bnfdoc", "j_1bnfe_active"]),
+  `j_1bnfdoc.mandt = '400'`
 ])}
-AND j_1bnfdoc.mandt = '400'
   `
 );

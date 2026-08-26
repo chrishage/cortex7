@@ -80,6 +80,7 @@ ${sql_helper.buildDynamicWhere([
 
 Hard rules that fall out of this shape (each corresponds to a real bug that only surfaced at run time):
 
+*   **Syntax Trap for `(ctx) => \`` (WARNING):** When refactoring `publish().query(...)` to `iceberg_helper.publishProduct(...)`, ensure the arrow function stays precisely `(ctx) =>`. Do NOT accidentally inject an extra parenthesis like `((ctx) =>` or strip it into `ctx) =>`. The closing of the wrapper should remain a single `);` at the end of the file. Do not double-close with `));`. This triggers Dataform `SyntaxError`s during CI/CD execution!
 *   **Require helpers with the absolute `includes/...` path, never a relative `../` path.** `require("includes/sql_helper.js")` resolves; `require("../../../../../something")` does not. The `../` form is a signal that the definition was invented rather than copied.
 *   **Reference the source with `ctx.ref(moduleConfig.sources.sapRaw.datasetId, "<table>")`, not `ctx.ref("sapRaw", "<table>")`.**
 *   **Raw table names are lowercase.** Cortex V7 generates the `raw` tables in lowercase and is case-sensitive. Use `tvgrt`, not `TVGRT`, both in `ctx.ref(...)` and in the `manifest.yaml` (`dependencies.sapRaw.tables.common: [tvgrt]`). A raw name in the wrong case fails at run with `Unrecognized name: <table>` — see Phase 3.3.
@@ -142,6 +143,10 @@ s4:
         value: sales
       # ...
     dataformTags: [sap, sales, sap_sd, custom_tramontina, master, hourly]
+    partitionDetails:
+      partitionType: DATE
+      timeGrain: DAY
+      column: erdat
     bigquery:
       iceberg:
         connection: <as per this repo's convention>
@@ -149,7 +154,9 @@ s4:
         fileFormat: PARQUET
 ```
 
-Rules: the `bigquery.iceberg` block lives **only under `s4:`**, never under `ecc:`. Copy the exact `connection`/`bucketName`/`fileFormat` values from a product that already materializes rather than guessing them.
+> **CRITICAL RULE FOR PARTITIONS**: `cortex-build` expects `partitionType: DATE` (and `timeGrain: DAY` or similar) when partitioning by a date/timestamp field. If you use `partitionType: time`, `cortex-build` will throw `Unsupported partitionType '<PartitionType.TIME: 'time'>'` and silently drop the partition configuration!
+
+Rules: the `bigquery.iceberg` block lives **only under `s4:`** (unless specifically overriding for a pure ecc-only view), never flat. Copy the exact `connection`/`bucketName`/`fileFormat` values from a product that already materializes rather than guessing them.
 
 ---
 
