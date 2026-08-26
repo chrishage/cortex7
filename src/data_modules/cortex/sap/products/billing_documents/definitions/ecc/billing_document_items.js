@@ -274,6 +274,7 @@ SELECT
   vbrp.wrf_charstc1 AS characteristic_value_1_wrf_charstc1,
   vbrp.wrf_charstc2 AS characteristic_value_2_wrf_charstc2,
   vbrp.wrf_charstc3 AS characteristic_value_3_wrf_charstc3,
+  vbrp.draft AS draft,
   vbrp.sfakn_ana AS cancelled_bill_doc_sfakn_ana,
   dimensional_date_erdat.cal_year AS year_of_creation_date_erdat,
   dimensional_date_erdat.cal_month AS month_of_creation_date_erdat,

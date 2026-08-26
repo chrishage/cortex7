@@ -472,6 +472,10 @@ fields:
     description: Quarter of Creation Date
   - name: week_of_creation_date_erdat
     description: Week of Creation Date
+  - name: draft
+    description: 'Draft'
+  - name: cancelled_bill_doc_sfakn_ana
+    description: 'Number of the canceled billing document (SFAKN)'
   - name: source_last_updated_at
     description: Source Last Updated At
   - name: bq_loaded_at
