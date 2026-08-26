@@ -62,6 +62,7 @@ Once approved, modify the files by applying the changes cleanly. Follow all conv
 ### 1. Annotations Update
 *   Modify files in `src/data_modules/<namespace>/<source>/products/<type>/annotations/` (e.g., `ecc/` or `s4/` directories if they differ).
 *   **Do NOT overwrite** existing annotations or user-added descriptions. Add new fields cleanly or update description blocks non-destructively.
+*   **NEVER guess or invent descriptions for SAP fields.** Always use the `query_sap_ddic` skill (with `--format yaml`) to fetch the exact DDIC description from the SAP raw table, and copy-paste the resulting `description: ` string into the YAML annotation.
 
 ### 2. Dataform Definitions Update (`.js` / `.sqlx` files)
 *   Update the Dataform models in `src/data_modules/<namespace>/<source>/products/<type>/definitions/`.

@@ -473,7 +473,7 @@ fields:
   - name: week_of_creation_date_erdat
     description: Week of Creation Date
   - name: draft
-    description: 'Draft'
+    description: 'variável booleana (X=verdade -=falso espaço=desconhecido)'
   - name: cancelled_bill_doc_sfakn_ana
     description: 'Number of the canceled billing document (SFAKN)'
   - name: source_last_updated_at

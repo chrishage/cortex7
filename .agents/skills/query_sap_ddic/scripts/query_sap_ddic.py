@@ -273,7 +273,10 @@ def main():
     if args["format"] == "json":
         print(json.dumps(columns, indent=2))
     elif args["format"] == "yaml":
-        print(yaml.dump(columns, sort_keys=False))
+        for col in columns:
+            desc = (col.get("Description") or "").replace("'", "\\'")
+            print(f"  - name: {col['Field'].lower()}")
+            print(f"    description: '{desc}'")
     else:
         print_markdown_table(columns)
 
