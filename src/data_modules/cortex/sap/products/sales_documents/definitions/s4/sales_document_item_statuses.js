@@ -69,6 +69,7 @@ SELECT
   vbap.lssta AS delivery_block_status_for_item_lssta,
   vbap.manek AS manual_completion_of_contract_manek,
   vbap.ifrs15_relevance AS ifrs15_relevance,
+  vbap.erdat AS creation_date_erdat,
   IFNULL(vbap.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
 FROM
