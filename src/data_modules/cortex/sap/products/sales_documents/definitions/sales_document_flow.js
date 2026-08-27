@@ -32,17 +32,17 @@ const publishConfig = publish_config.getPublishConfig(
     "client_mandt",
     "sales_order_vbelv",
     "sales_order_item_posnv",
-    "delivery_vbelv",
-    "delivery_item_posnv",
+    "delivery_vbeln",
+    "delivery_item_posnn",
     "billing_vbeln",
     "billing_item_posnn"
   ]
 );
 
-// const filters = tableConfig.filters || {};
-// const precedingCats = filters.preceding_document_categories || ['C'];
-// const deliveryCats = filters.delivery_document_categories || ['J', 'T'];
-// const billingCats = filters.billing_document_categories || ['M'];
+const filters = tableConfig.filters || {};
+const precedingCats = filters.preceding_document_categories || ['C'];
+const deliveryCats = filters.delivery_document_categories || ['J', 'T'];
+const billingCats = filters.billing_document_categories || ['M'];
 
 iceberg_helper.publishProduct(
   moduleContext.moduleId + "_" + tableConfig.tableName,
@@ -53,35 +53,35 @@ SELECT
   SO.mandt AS client_mandt,
   SO.vbelv AS sales_order_vbelv,
   SO.posnv AS sales_order_item_posnv,
-  Deliveries.vbelv AS delivery_vbelv,
-  Deliveries.posnv AS delivery_item_posnv,
-  Deliveries.vbeln AS billing_vbeln,
-  Deliveries.posnn AS billing_item_posnn,
+  SO.vbeln AS delivery_vbeln,
+  SO.posnn AS delivery_item_posnn,
+  Billing.vbeln AS billing_vbeln,
+  Billing.posnn AS billing_item_posnn,
   SO.erdat AS creation_date_erdat,
   SO.rfmng AS delivered_qty_rfmng,
   SO.meins AS delivered_uom_meins,
-  Deliveries.rfmng AS billed_qty_rfmng,
-  Deliveries.meins AS billed_uom_meins,
-  Deliveries.rfwrt AS billed_value_rfwrt,
-  Deliveries.waers AS billing_currency_waers,
+  Billing.rfmng AS billed_qty_rfmng,
+  Billing.meins AS billed_uom_meins,
+  Billing.rfwrt AS billed_value_rfwrt,
+  Billing.waers AS billing_currency_waers,
   GREATEST(
     IFNULL(SO.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')),
-    IFNULL(Deliveries.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
+    IFNULL(Billing.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00'))
   ) AS source_last_updated_at,
   CURRENT_TIMESTAMP() AS bq_loaded_at
 FROM
   ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbfa")} AS SO
 LEFT OUTER JOIN
-  ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbfa")} AS Deliveries
+  ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbfa")} AS Billing
   ON
-    SO.vbeln = Deliveries.vbelv
-    AND SO.mandt = Deliveries.mandt
-    AND SO.posnn = Deliveries.posnv
+    SO.mandt = Billing.mandt
+    AND SO.vbeln = Billing.vbelv
+    AND SO.posnn = Billing.posnv
+    AND Billing.vbtyp_n IN (${sql_helper.formatFilterArray(billingCats)})
 ${sql_helper.buildDynamicWhere([
-  // `SO.vbtyp_v IN (${sql_helper.formatFilterArray(precedingCats)})`,
-  // `SO.vbtyp_n IN (${sql_helper.formatFilterArray(deliveryCats)})`,
-  // `Deliveries.vbtyp_n IN (${sql_helper.formatFilterArray(billingCats)})`,
-  incremental.getFilter(ctx, ["SO", "Deliveries"])
+  `SO.vbtyp_v IN (${sql_helper.formatFilterArray(precedingCats)})`,
+  `SO.vbtyp_n IN (${sql_helper.formatFilterArray(deliveryCats)})`,
+  incremental.getFilter(ctx, ["SO", "Billing"])
 ])}
 `,
 );

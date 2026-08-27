@@ -24,9 +24,9 @@ fields:
     description: Preceding Sales Order Document Number, PK, PK
   - name: sales_order_item_posnv
     description: Preceding Sales Order Item Number, PK, PK
-  - name: delivery_vbelv
+  - name: delivery_vbeln
     description: Delivery Document Number, PK, PK
-  - name: delivery_item_posnv
+  - name: delivery_item_posnn
     description: Delivery Document Item Number, PK, PK
   - name: billing_vbeln
     description: Subsequent Billing Document Number, PK, PK
