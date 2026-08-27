@@ -39,10 +39,10 @@ const publishConfig = publish_config.getPublishConfig(
   ]
 );
 
-const filters = tableConfig.filters || {};
-const precedingCats = filters.preceding_document_categories || ['C'];
-const deliveryCats = filters.delivery_document_categories || ['J', 'T'];
-const billingCats = filters.billing_document_categories || ['M'];
+// const filters = tableConfig.filters || {};
+// const precedingCats = filters.preceding_document_categories || ['C'];
+// const deliveryCats = filters.delivery_document_categories || ['J', 'T'];
+// const billingCats = filters.billing_document_categories || ['M'];
 
 iceberg_helper.publishProduct(
   moduleContext.moduleId + "_" + tableConfig.tableName,
@@ -78,9 +78,9 @@ LEFT OUTER JOIN
     AND SO.mandt = Deliveries.mandt
     AND SO.posnn = Deliveries.posnv
 ${sql_helper.buildDynamicWhere([
-  `SO.vbtyp_v IN (${sql_helper.formatFilterArray(precedingCats)})`,
-  `SO.vbtyp_n IN (${sql_helper.formatFilterArray(deliveryCats)})`,
-  `Deliveries.vbtyp_n IN (${sql_helper.formatFilterArray(billingCats)})`,
+  // `SO.vbtyp_v IN (${sql_helper.formatFilterArray(precedingCats)})`,
+  // `SO.vbtyp_n IN (${sql_helper.formatFilterArray(deliveryCats)})`,
+  // `Deliveries.vbtyp_n IN (${sql_helper.formatFilterArray(billingCats)})`,
   incremental.getFilter(ctx, ["SO", "Deliveries"])
 ])}
 `,
