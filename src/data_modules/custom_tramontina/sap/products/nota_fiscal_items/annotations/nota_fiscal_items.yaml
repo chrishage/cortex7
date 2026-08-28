@@ -9,6 +9,10 @@ fields:
     description: 'Nota Fiscal Item'
   - name: material_number_matnr
     description: 'Material Number'
+  - name: batch_charg
+    description: 'Batch Number'
+  - name: base_unit_meins
+    description: 'Base Unit of Measure'
   - name: quantity_menge
     description: 'Quantity'
   - name: net_price_netpr
@@ -19,6 +23,12 @@ fields:
     description: 'Net Value'
   - name: net_freight_netfre
     description: 'Net Freight'
+  - name: insurance_netins
+    description: 'Insurance Amount'
+  - name: other_expenses_netoth
+    description: 'Other Expenses'
+  - name: billing_document_refkey
+    description: 'Reference Key to Billing Document'
   - name: source_last_updated_at
     description: 'Auditoria de carga (patrón Cortex).'
   - name: bq_loaded_at
