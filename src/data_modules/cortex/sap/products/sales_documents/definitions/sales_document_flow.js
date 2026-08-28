@@ -83,5 +83,39 @@ ${sql_helper.buildDynamicWhere([
     `SO.vbtyp_n IN (${sql_helper.formatFilterArray(deliveryCats)})`,
     incremental.getFilter(ctx, ["SO", "Billing"])
   ])}
+
+UNION ALL
+
+SELECT
+  SO.mandt AS client_mandt,
+  SO.vbelv AS sales_order_vbelv,
+  SO.posnv AS sales_order_item_posnv,
+  '' AS delivery_vbeln,
+  '' AS delivery_item_posnn,
+  SO.vbeln AS billing_vbeln,
+  SO.posnn AS billing_item_posnn,
+  SO.erdat AS creation_date_erdat,
+  CAST(NULL AS NUMERIC) AS delivered_qty_rfmng,
+  CAST(NULL AS STRING) AS delivered_uom_meins,
+  SO.rfmng AS billed_qty_rfmng,
+  SO.meins AS billed_uom_meins,
+  SO.rfwrt AS billed_value_rfwrt,
+  SO.waers AS billing_currency_waers,
+  IFNULL(SO.recordstamp, TIMESTAMP('1900-01-01 00:00:00+00')) AS source_last_updated_at,
+  CURRENT_TIMESTAMP() AS bq_loaded_at
+FROM
+  ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbfa")} AS SO
+${sql_helper.buildDynamicWhere([
+    `SO.vbtyp_v IN (${sql_helper.formatFilterArray(precedingCats)})`,
+    `SO.vbtyp_n IN (${sql_helper.formatFilterArray(billingCats)})`,
+    `NOT EXISTS (
+      SELECT 1 FROM ${ctx.ref(moduleConfig.sources.sapModule.datasetId, "vbfa")} X
+      WHERE X.mandt = SO.mandt
+        AND X.vbeln = SO.vbeln
+        AND X.posnn = SO.posnn
+        AND X.vbtyp_v IN (${sql_helper.formatFilterArray(deliveryCats)})
+    )`,
+    incremental.getFilter(ctx, ["SO"])
+  ])}
 `,
 );
