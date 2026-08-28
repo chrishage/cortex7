@@ -41,7 +41,7 @@ const publishConfig = publish_config.getPublishConfig(
 
 const filters = tableConfig.filters || {};
 const precedingCats = filters.preceding_document_categories || ['C'];
-const deliveryCats = filters.delivery_document_categories || ['J', 'T'];
+const deliveryCats = filters.delivery_document_categories || ['J'];
 const billingCats = filters.billing_document_categories || ['M'];
 
 iceberg_helper.publishProduct(
@@ -79,9 +79,9 @@ LEFT OUTER JOIN
     AND SO.posnn = Billing.posnv
     AND Billing.vbtyp_n IN (${sql_helper.formatFilterArray(billingCats)})
 ${sql_helper.buildDynamicWhere([
-  `SO.vbtyp_v IN (${sql_helper.formatFilterArray(precedingCats)})`,
-  `SO.vbtyp_n IN (${sql_helper.formatFilterArray(deliveryCats)})`,
-  incremental.getFilter(ctx, ["SO", "Billing"])
-])}
+    `SO.vbtyp_v IN (${sql_helper.formatFilterArray(precedingCats)})`,
+    `SO.vbtyp_n IN (${sql_helper.formatFilterArray(deliveryCats)})`,
+    incremental.getFilter(ctx, ["SO", "Billing"])
+  ])}
 `,
 );
