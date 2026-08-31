@@ -79,14 +79,14 @@ variables:
 
 .setup: &setup
   - echo "$SA_KEY_B64" | base64 -d > /tmp/sa-key.json
-  - gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+  - gcloud auth activate-service-account --key-file=/tmp/sa-key.json --quiet
   - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json
   - gcloud config set project "$GCP_PROJECT"
-  - apt-get update -y && apt-get install -y nodejs npm python3 python3-pip curl
-  - npm i -g @dataform/cli@$DATAFORM_VERSION
-  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - apt-get update -y -qq && apt-get install -y -qq nodejs npm python3 python3-pip curl > /dev/null 2>&1
+  - npm i -g @dataform/cli@$DATAFORM_VERSION --silent
+  - curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --quiet
   - export PATH="$HOME/.local/bin:$PATH"
-  - uv sync
+  - uv sync --quiet
   - cp "$CORTEX_CONFIG_FILE" config/config.yaml
   - uv run cortex-build --config config/config.yaml --output-dir build_out
 
