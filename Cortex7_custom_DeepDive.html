@@ -1,0 +1,1385 @@
+<title>Cortex Iceberg Field Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500;700&family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  --g-blue:#1a73e8; --g-blue-dark:#174ea6; --g-blue-light:#e8f0fe;
+  --g-green:#1e8e3e; --g-green-light:#e6f4ea;
+  --g-yellow:#f9ab00; --g-yellow-light:#fef7e0;
+  --g-red:#d93025; --g-red-light:#fce8e6;
+  --g-purple:#8430ce;
+
+  --ink:#202124; --ink-2:#3c4043; --ink-3:#5f6368; --ink-4:#80868b;
+  --ground:#ffffff; --surface:#f8f9fa; --surface-2:#f1f3f4;
+  --line:#dadce0; --line-soft:#e8eaed;
+  --code-bg:#f8f9fa; --code-ink:#37474f;
+  --nav-bg:#ffffff; --nav-line:#dadce0;
+  --shadow-1:0 1px 2px 0 rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
+
+  --sans:"Google Sans Code","Roboto",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Roboto",system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"Roboto Mono","Google Sans Code",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --radius:8px;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--body); font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:var(--sans); text-wrap:balance; margin:0}
+p{margin:0}
+a{color:var(--g-blue); text-decoration:none}
+a:hover{text-decoration:underline}
+a:focus-visible{outline:3px solid var(--g-blue); outline-offset:2px; border-radius:4px}
+code{font-family:var(--mono); font-size:.875em}
+
+/* ============ NAV CHROME ============ */
+@media (max-width:900px){ .gnav-links,.gnav-cta .btn:first-child{display:none} .gnav-in{gap:14px; padding:0 18px} }
+
+@media (max-width:900px){ .subnav-in{padding:0 18px; gap:18px} }
+
+/* ============ MASTHEAD ============ */
+.mast{border-bottom:1px solid var(--line); background:var(--ground)}
+.mast-in{
+  max-width:1280px; margin:0 auto; padding:18px 28px;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+}
+@media (max-width:900px){ .mast-in{padding:16px 20px} }
+.lockup{display:flex; align-items:center; gap:9px; flex:none}
+.lockup svg{display:block; height:22px; width:auto}
+.lockup .wm{
+  font-family:var(--sans); font-size:18px; font-weight:400;
+  color:var(--ink-2); letter-spacing:-.2px; white-space:nowrap;
+}
+.mast-div{width:1px; height:20px; background:var(--line); flex:none}
+.mast-t{font-family:var(--sans); font-size:14px; color:var(--ink-3); white-space:nowrap}
+
+/* ============ SHELL ============ */
+.wrap{max-width:1280px; margin:0 auto; padding:0 28px}
+@media (max-width:900px){ .wrap{padding:0 18px} }
+.shell{display:grid; grid-template-columns:250px minmax(0,1fr); gap:52px; padding:36px 0 80px; align-items:start}
+@media (max-width:1040px){ .shell{grid-template-columns:minmax(0,1fr); gap:28px} }
+
+.toc{position:sticky; top:24px; display:flex; flex-direction:column; gap:20px}
+@media (max-width:1040px){
+  .toc{position:static; border:1px solid var(--line-soft); border-radius:12px; padding:18px 20px; background:var(--surface)}
+}
+.toc-h{font-family:var(--sans); font-size:11px; font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--ink-4); padding:0 0 4px}
+.nav{display:flex; flex-direction:column; gap:1px}
+.nav a{display:block; padding:6px 12px; border-radius:0 18px 18px 0; margin-left:-12px; color:var(--ink-2); font-size:13.5px; line-height:1.35; transition:background .12s,color .12s}
+.nav a:hover{background:var(--surface-2); text-decoration:none}
+.nav a.on{background:var(--g-blue-light); color:var(--g-blue-dark); font-weight:500}
+
+.col{max-width:820px; min-width:0}
+
+/* ---- header ---- */
+.crumb{font-family:var(--sans); font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--g-blue); margin-bottom:14px}
+h1{font-size:clamp(29px,4.2vw,40px); line-height:1.16; font-weight:700; letter-spacing:-.9px; margin-bottom:16px}
+.lede{font-size:18px; line-height:1.6; color:var(--ink-2)}
+.byline{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:24px 0 0; padding:18px 0; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft)}
+.avatar{width:42px;height:42px;border-radius:50%;flex:none; display:grid; place-items:center; background:var(--g-blue-light); color:var(--g-blue-dark); font-family:var(--sans); font-weight:700; font-size:15px}
+.by-t{display:flex; flex-direction:column; gap:1px; min-width:0}
+.by-n{font-family:var(--sans); font-size:14.5px; font-weight:700; color:var(--ink)}
+.by-r{font-size:13px; color:var(--ink-3)}
+.by-sp{flex:1}
+.by-date{font-size:13px; color:var(--ink-4); white-space:nowrap}
+.guest{font-family:var(--sans); font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; padding:3px 9px; border-radius:11px; background:var(--surface-2); color:var(--ink-3); border:1px solid var(--line)}
+
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:22px}
+.chip{font-family:var(--mono); font-size:11.5px; padding:5px 11px; border-radius:20px; border:1px solid var(--line); color:var(--ink-3); background:var(--surface); white-space:nowrap}
+.chip b{color:var(--ink); font-weight:500}
+
+.band{margin:26px 0 0; border-radius:12px; overflow:hidden; background:linear-gradient(135deg,#1a73e8 0%,#4285f4 46%,#34a853 100%); padding:28px 30px; color:#fff}
+.band-l{font-family:var(--sans); font-size:11.5px; font-weight:700; letter-spacing:1.1px; text-transform:uppercase; opacity:.9}
+.band-g{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:18px; margin-top:18px}
+.band-n{font-family:var(--sans); font-size:29px; font-weight:700; line-height:1; letter-spacing:-1.2px; font-variant-numeric:tabular-nums}
+.band-d{font-size:12.5px; line-height:1.4; margin-top:6px; opacity:.92}
+
+/* ---- body ---- */
+section{margin-top:56px; scroll-margin-top:24px}
+h2{font-size:25px; font-weight:700; line-height:1.26; letter-spacing:-.4px; margin-bottom:12px}
+h3{font-size:17px; font-weight:700; line-height:1.4; margin-bottom:8px}
+h4{font-size:14px; font-weight:700; line-height:1.4}
+.col p{color:var(--ink-2)}
+.col p + p{margin-top:12px}
+.sec-intro{margin-bottom:24px}
+.eyebrow{font-family:var(--sans); font-size:11.5px; font-weight:700; letter-spacing:1.1px; text-transform:uppercase; color:var(--g-blue); margin-bottom:10px}
+
+.grid{display:grid; gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(232px,1fr))}
+.card{background:var(--ground); border:1px solid var(--line); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow-1)}
+.card p{font-size:14px; color:var(--ink-3)}
+.card h3{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.card-k{font-family:var(--mono); font-size:11px; color:var(--ink-4); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-weight:400}
+
+.note{border-left:4px solid var(--g-blue); background:var(--surface); border-radius:0 var(--radius) var(--radius) 0; padding:15px 18px; margin:20px 0}
+.note.warn{border-left-color:var(--g-yellow)}
+.note.risk{border-left-color:var(--g-red)}
+.note.good{border-left-color:var(--g-green)}
+.note h4{margin-bottom:6px; display:flex; align-items:center; gap:8px}
+.note p{font-size:14.5px}
+.note p + p{margin-top:9px}
+.ico{width:17px;height:17px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;font-family:var(--sans)}
+.i-blue{background:var(--g-blue)} .i-yellow{background:var(--g-yellow);color:#3c2f00}
+.i-red{background:var(--g-red)} .i-green{background:var(--g-green)}
+
+.code{background:var(--code-bg); border:1px solid var(--line-soft); border-radius:var(--radius); overflow:hidden; margin:0}
+.code-h{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 14px; border-bottom:1px solid var(--line-soft); background:var(--surface-2)}
+.code-t{font-family:var(--mono); font-size:11.5px; color:var(--ink-3)}
+.tag{font-family:var(--sans); font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; padding:2px 8px; border-radius:3px}
+.t-before{background:var(--g-red-light); color:var(--g-red)}
+.t-after{background:var(--g-green-light); color:var(--g-green)}
+.t-neutral{background:var(--surface); color:var(--ink-3); border:1px solid var(--line)}
+.code pre{margin:0; padding:14px; overflow-x:auto; font-family:var(--mono); font-size:12.5px; line-height:1.65; color:var(--code-ink); tab-size:2}
+.cmt{color:var(--ink-4); font-style:italic}
+.kw{color:var(--g-purple); font-weight:500}
+.str{color:var(--g-green)}
+.add{color:var(--g-green); font-weight:500}
+.del{color:var(--g-red)}
+.hi{background:var(--g-yellow-light); border-radius:2px; padding:0 2px}
+
+.tw{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); margin:20px 0}
+table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:460px}
+th{text-align:left; font-family:var(--sans); font-size:11px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:var(--ink-3); padding:11px 15px; background:var(--surface-2); border-bottom:1px solid var(--line); white-space:nowrap}
+td{padding:11px 15px; border-bottom:1px solid var(--line-soft); color:var(--ink-2); vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--surface)}
+.num{text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums; white-space:nowrap}
+td code{background:var(--surface-2); padding:1px 5px; border-radius:3px; color:var(--ink)}
+.win{color:var(--g-green); font-weight:700; font-family:var(--mono); white-space:nowrap; text-align:right}
+.zero{color:var(--ink-4); font-family:var(--mono)}
+.sub{font-size:12.5px; color:var(--ink-4); margin-top:3px}
+
+.pill{display:inline-block; font-family:var(--sans); font-size:10.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; padding:3px 9px; border-radius:11px; white-space:nowrap}
+.p-prod{background:var(--g-green-light); color:var(--g-green)}
+.p-dev{background:var(--g-yellow-light); color:#8a6100}
+.p-risk{background:var(--g-red-light); color:var(--g-red)}
+.p-info{background:var(--g-blue-light); color:var(--g-blue-dark)}
+
+.flow{display:flex; align-items:stretch; flex-wrap:wrap; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin:22px 0}
+.fs{flex:1 1 168px; padding:16px 17px; border-right:1px solid var(--line-soft); min-width:168px}
+.fs:last-child{border-right:0}
+.fs-l{font-family:var(--mono); font-size:10.5px; color:var(--ink-4); text-transform:uppercase; letter-spacing:.6px}
+.fs-n{font-family:var(--sans); font-size:14.5px; font-weight:700; margin:5px 0 6px; color:var(--ink)}
+.fs-d{font-size:12px; color:var(--ink-3); line-height:1.5}
+.fs.acc{background:var(--surface); box-shadow:inset 3px 0 0 var(--g-blue)}
+
+.steps{display:flex; flex-direction:column; margin:22px 0}
+.step{display:grid; grid-template-columns:34px minmax(0,1fr); gap:16px; padding:0 0 24px; position:relative}
+.step:not(:last-child)::before{content:""; position:absolute; left:16.5px; top:32px; bottom:0; width:1px; background:var(--line)}
+.step-n{width:34px;height:34px;border-radius:50%; display:grid; place-items:center; background:var(--g-blue); color:#fff; font-family:var(--sans); font-weight:700; font-size:14px; position:relative; z-index:1}
+.step-b{padding-top:5px; min-width:0}
+.step-b p{font-size:14.5px}
+.step-b .code{margin-top:11px}
+
+ul.tight{margin:12px 0; padding-left:20px; color:var(--ink-2); font-size:14.5px}
+ul.tight li{margin-bottom:7px; line-height:1.55}
+ul.tight li::marker{color:var(--ink-4)}
+
+/* ---- footer ---- */
+@media (max-width:900px){ .gfoot-in{padding:26px 18px 34px} }
+@media (max-width:900px){ .disclaimer{padding:0 18px 34px} }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important; scroll-behavior:auto!important} }
+html{scroll-behavior:smooth}
+</style>
+
+
+
+<header class="mast">
+  <div class="mast-in">
+    <span class="lockup">
+      <svg viewBox="0 0 24 24" role="img" aria-label="Google Cloud">
+        <path fill="#ea4335" d="M12 4.8c1.6 0 3.1.6 4.2 1.6l3.1-3.1C17.4 1.5 14.8.4 12 .4 7.4.4 3.4 3 1.5 6.9l3.6 2.8C6 6.8 8.7 4.8 12 4.8z"/>
+        <path fill="#4285f4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.5 2.7c2.1-1.9 3.9-4.8 3.9-8.5z"/>
+        <path fill="#fbbc05" d="M5.1 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3L1.5 6.9C.7 8.4.2 10.1.2 12s.5 3.6 1.3 5.1l3.6-2.8z"/>
+        <path fill="#34a853" d="M12 23.6c3 0 5.5-1 7.6-2.8l-3.5-2.7c-1 .7-2.3 1.1-4.1 1.1-3.3 0-6-2-7-4.9l-3.6 2.8c1.9 3.9 5.9 6.5 10.6 6.5z"/>
+      </svg>
+      <span class="wm">Google Cloud</span>
+    </span>
+    <span class="mast-div"></span>
+    <span class="mast-t">Cortex Framework v7 — technical documentation</span>
+  </div>
+</header>
+
+<div class="wrap" id="top">
+<div class="shell">
+
+<!-- ============ TOC ============ -->
+<aside class="toc">
+  <div>
+    <div class="toc-h">Overview</div>
+    <nav class="nav">
+      <a href="#summary" class="on">Change summary</a>
+      <a href="#method">How we compared</a>
+      <a href="#architecture">Resulting architecture</a>
+    </nav>
+    <div class="toc-h" style="margin-top:14px">The engine</div>
+    <nav class="nav">
+      <a href="#helper">1 · Iceberg helper</a>
+      <a href="#metadata">2 · Column descriptions</a>
+      <a href="#layout">3 · Partitioning and clustering</a>
+    </nav>
+    <div class="toc-h" style="margin-top:14px">Load cost</div>
+    <nav class="nav">
+      <a href="#watermark">4 · Watermark variable</a>
+      <a href="#pruning">5 · MERGE pruning</a>
+      <a href="#results">Measured results</a>
+    </nav>
+    <div class="toc-h" style="margin-top:14px">Extensions</div>
+    <nav class="nav">
+      <a href="#custom">6 · Custom namespace</a>
+      <a href="#fixes">7 · Data corrections</a>
+      <a href="#cicd">8 · Deployment pipeline</a>
+    </nav>
+    <div class="toc-h" style="margin-top:14px">Knowledge</div>
+    <nav class="nav">
+      <a href="#skills">9 · Agent skills</a>
+    </nav>
+    <div class="toc-h" style="margin-top:14px">Adoption</div>
+    <nav class="nav">
+      <a href="#porting">Porting checklist</a>
+      <a href="#risks">Risks and debt</a>
+    </nav>
+  </div>
+</aside>
+
+<!-- ============ ARTICLE ============ -->
+<div class="col">
+
+<header id="summary">
+  <div class="crumb">Cortex Framework v7 · Technical documentation</div>
+  <h1>Iceberg materialization and incremental load cost in Cortex v7</h1>
+  <p class="lede">
+    A production SAP deployment publishes ~50 Cortex data products as managed Apache Iceberg
+    tables in Cloud Storage, and cut incremental MERGE cost by up to 22×. This document walks
+    through each change, the SQL it emits, and the failure modes we hit along the way.
+  </p>
+
+  <div class="byline">
+    <div class="avatar">BA</div>
+    <div class="by-t">
+      <div class="by-n">Cortex 7</div>
+      <div class="by-r">SAP</div>
+    </div>
+    <div class="by-sp"></div>
+    <span class="guest">Guest post</span>
+    <span class="by-date">September 1, 2026</span>
+  </div>
+
+  <div class="chips">
+    <span class="chip">baseline <b>7.0.2</b></span>
+    <span class="chip"><b>215</b> files</span>
+    <span class="chip"><b>+56,686</b> / −415 lines</span>
+    <span class="chip"><b>59</b> products on Iceberg</span>
+    <span class="chip">BigQuery <b>US</b></span>
+  </div>
+
+  <div class="band">
+    <div class="band-l">Results in production</div>
+    <div class="band-g">
+      <div><div class="band-n">22×</div><div class="band-d">Universal journal MERGE<br>612 GB → 28 GB</div></div>
+      <div><div class="band-n">6.5×</div><div class="band-d">Finance group per run<br>~1.4 TB → ~215 GB</div></div>
+      <div><div class="band-n">59</div><div class="band-d">Products materialized<br>46 standard + 13 custom</div></div>
+      <div><div class="band-n">1</div><div class="band-d">New file in core<br>iceberg_helper.js</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="method">
+  <h2>How we compared</h2>
+  <div class="sec-intro">
+    <p>
+      The comparison uses the upstream baseline commit recorded in the deployment repository's
+      own history, not a reference archive. The distinction changes the numbers materially.
+    </p>
+  </div>
+
+  <div class="note warn">
+    <h4><span class="ico i-yellow">!</span> The two copies are not on the same version</h4>
+    <p>
+      The reference copy is <strong>7.0.5</strong>; this deployment branched from
+      <strong>7.0.2</strong>. A direct folder diff reports 127 modified files, but part of
+      that is upstream evolution between the two releases rather than deployment changes.
+    </p>
+    <p>
+      Excluded as upstream drift: the removal of <code>SapBdcProductTableSettings</code>,
+      changes to the SAP BDC product builder, and the skill-authoring assets. Everything
+      described here is from the baseline diff.
+    </p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Nature of change</th><th class="num">Files</th><th>Location</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Materialization engine</strong><div class="sub">The Iceberg helper</div></td><td class="num">1</td><td><code>src/dataform_includes/</code></td></tr>
+        <tr><td><strong>Adoption in standard products</strong><div class="sub">Swapping <code>publish()</code> for the helper</div></td><td class="num">46</td><td><code>data_modules/cortex/</code></td></tr>
+        <tr><td><strong>Layout configuration</strong><div class="sub">Iceberg blocks, partitioning, clustering</div></td><td class="num">12</td><td><code>table_settings.default.yaml</code></td></tr>
+        <tr><td><strong>Custom namespace</strong><div class="sub">12 products the standard set does not cover</div></td><td class="num">57</td><td><code>data_modules/custom_*/</code></td></tr>
+        <tr><td><strong>New foundation tables</strong><div class="sub">Annotations for additional SAP sources</div></td><td class="num">14</td><td><code>foundations/sap/annotations/</code></td></tr>
+        <tr><td><strong>Agent skills</strong><div class="sub">805 lines of captured methodology</div></td><td class="num">2</td><td><code>.agents/skills/</code></td></tr>
+        <tr><td><strong>Pipeline and agent rules</strong><div class="sub">CI config, <code>AGENTS.md</code> registration</div></td><td class="num">2</td><td>root and <code>.agents/</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="architecture">
+  <h2>Resulting architecture</h2>
+  <div class="sec-intro">
+    <p>
+      The fork does not change Cortex's design — it changes the storage format at the final
+      hop. The data product layer stops being native BigQuery storage and becomes Iceberg in
+      Cloud Storage, so engines outside BigQuery can read the same files.
+    </p>
+  </div>
+
+  <div class="flow">
+    <div class="fs"><div class="fs-l">Source</div><div class="fs-n">SAP S/4HANA</div><div class="fs-d">CDC replication into the <code>raw</code> dataset</div></div>
+    <div class="fs"><div class="fs-l">Foundation</div><div class="fs-n">raw</div><div class="fs-d">Replicated SAP tables, already date-partitioned</div></div>
+    <div class="fs acc"><div class="fs-l">Where the fork acts</div><div class="fs-n">data_products</div><div class="fs-d">Dataform + <code>iceberg_helper</code> → Iceberg in GCS</div></div>
+    <div class="fs"><div class="fs-l">Consumption</div><div class="fs-n">External engines</div><div class="fs-d">Read Iceberg from the bucket, outside BigQuery</div></div>
+  </div>
+
+  <div class="note">
+    <h4><span class="ico i-blue">i</span> Why managed Iceberg rather than native tables</h4>
+    <p>
+      A native BigQuery table is readable only by BigQuery. With managed Iceberg (BigLake),
+      the Parquet files and Iceberg metadata live in a Cloud Storage bucket in an open
+      format — BigQuery continues to read and write normally, and other engines read the
+      same files with no copy and no export step.
+    </p>
+  </div>
+</section>
+
+<section id="helper">
+  <div class="eyebrow">Change 1 · the engine</div>
+  <h2>The Iceberg helper</h2>
+  <div class="sec-intro">
+    <p>
+      All Iceberg materialization runs through one new file,
+      <code>src/dataform_includes/iceberg_helper.js</code> (397 lines). It exists for a
+      specific and non-obvious reason.
+    </p>
+  </div>
+
+  <div class="note risk">
+    <h4><span class="ico i-red">!</span> The problem it solves</h4>
+    <p>
+      Dataform's <code>publish()</code> does <strong>not</strong> emit
+      <code>WITH CONNECTION … OPTIONS(table_format='ICEBERG')</code> from a
+      <code>bigquery.iceberg</code> config block. It creates a <strong>native BigQuery
+      table, silently</strong> — no error, no warning. The configuration looks correct and
+      the output is wrong.
+    </p>
+  </div>
+
+  <p>
+    The workaround is to write the Iceberg DDL by hand, through <code>operate()</code>
+    instead of <code>publish()</code>. That trade is expensive: leaving the
+    <code>publish()</code> path forfeits everything Dataform does underneath — column
+    descriptions, metadata application, <code>onSchemaChange</code>. Much of the rest of this
+    document is rebuilding those losses.
+  </p>
+
+  <div class="grid g2" style="margin-top:22px">
+    <div class="code">
+      <div class="code-h"><span class="code-t">product definition — before</span><span class="tag t-before">Baseline</span></div>
+<pre><span class="kw">publish</span>(moduleContext.moduleId + <span class="str">"_"</span> + tableConfig.tableName,
+        publishConfig).<span class="kw">query</span>(
+  (ctx) =&gt; `
+<span class="cmt">SELECT … FROM …</span>
+`
+);</pre>
+    </div>
+    <div class="code">
+      <div class="code-h"><span class="code-t">product definition — after</span><span class="tag t-after">Fork</span></div>
+<pre><span class="add">const iceberg_helper = require("includes/iceberg_helper.js");</span>
+
+<span class="add">iceberg_helper.publishProduct(</span>
+  moduleContext.moduleId + <span class="str">"_"</span> + tableConfig.tableName,
+  publishConfig,
+  <span class="add">tableConfig,</span>
+  (ctx) =&gt; `
+<span class="cmt">SELECT … FROM …</span>
+`
+);</pre>
+    </div>
+  </div>
+
+  <div class="note good">
+    <h4><span class="ico i-green">✓</span> Backward compatible by construction</h4>
+    <p>
+      If a product does not declare the <code>bigquery.iceberg</code> block, the helper calls
+      native <code>publish()</code> and nothing changes. Adoption is per-product — a
+      repository can run Iceberg and native tables side by side.
+    </p>
+  </div>
+
+  <h3 style="margin-top:26px">Statements it emits</h3>
+  <p>Two paths, selected by the product's <code>materializationType</code>:</p>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <h3><code class="card-k">table</code> Full refresh</h3>
+      <ul class="tight" style="margin-bottom:0">
+        <li><code>CREATE OR REPLACE TABLE … PARTITION BY … CLUSTER BY … WITH CONNECTION … OPTIONS(…)</code></li>
+        <li><code>ALTER TABLE</code> applying column descriptions</li>
+        <li><code>EXPORT TABLE METADATA</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><code class="card-k">incremental</code> Delta load</h3>
+      <ul class="tight" style="margin-bottom:0">
+        <li><code>CREATE TABLE IF NOT EXISTS … AS SELECT … WHERE FALSE</code> — creates empty on first run</li>
+        <li><code>ALTER TABLE</code> applying descriptions</li>
+        <li><code>BEGIN DECLARE _watermark … MERGE … END;</code></li>
+        <li><code>EXPORT TABLE METADATA</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <h4><span class="ico i-yellow">!</span> Separate statements, not an <code>IF/ELSE</code> script</h4>
+    <p>
+      BigQuery validates the entire script before executing. A <code>MERGE</code> referencing
+      a table that does not yet exist fails validation even inside an <code>ELSE</code> that
+      would never run. Hence the separate <code>CREATE TABLE IF NOT EXISTS</code>: it creates
+      on the first run and becomes a no-op afterward.
+    </p>
+  </div>
+
+  <div class="note risk">
+    <h4><span class="ico i-red">!</span> DDL clause order is mandatory</h4>
+    <p>
+      <code>PARTITION BY</code> → <code>CLUSTER BY</code> → <code>WITH CONNECTION</code> →
+      <code>OPTIONS</code>. Any other order is a syntax error on the Iceberg path. Native
+      BigQuery is more permissive, which makes this easy to get wrong.
+    </p>
+  </div>
+</section>
+
+<section id="metadata">
+  <div class="eyebrow">Change 2 · metadata</div>
+  <h2>Recovering column descriptions</h2>
+  <div class="sec-intro">
+    <p>
+      The first of the losses caused by trading <code>publish()</code> for
+      <code>operate()</code> — and it went unnoticed for months.
+    </p>
+  </div>
+
+  <div class="note risk">
+    <h4><span class="ico i-red">!</span> Iceberg products had no descriptions at all</h4>
+    <p>
+      On the native path, Dataform applies <code>publishConfig.columns</code> through the API
+      (<code>tables.patch</code>). Because the helper uses <code>operate()</code>, that
+      mechanism never ran: annotations stayed in the repository and the BigQuery tables
+      reached the catalog with no documentation whatsoever.
+    </p>
+  </div>
+
+  <p>
+    <code>CREATE … AS SELECT</code> cannot annotate columns, so the only route is an
+    <code>ALTER</code> after creation. The helper builds a single statement covering every
+    column — validated at 491 columns in one statement.
+  </p>
+
+  <div class="code" style="margin:18px 0">
+    <div class="code-h"><span class="code-t">iceberg_helper.js — buildDescriptionsSql()</span><span class="tag t-after">Fork</span></div>
+<pre><span class="kw">BEGIN</span>
+<span class="kw">ALTER TABLE</span> `project.dataset.table`
+  <span class="kw">ALTER COLUMN</span> `client_mandt` <span class="kw">SET OPTIONS</span>(description=<span class="str">'SAP client'</span>),
+  <span class="kw">ALTER COLUMN</span> `company_code` <span class="kw">SET OPTIONS</span>(description=<span class="str">'Company code'</span>);
+<span class="hi"><span class="kw">EXCEPTION WHEN ERROR THEN</span></span>
+  <span class="kw">SELECT</span> <span class="kw">CONCAT</span>(<span class="str">'[iceberg_helper] column descriptions skipped: '</span>, @@error.message);
+<span class="kw">END</span>;</pre>
+  </div>
+
+  <div class="grid g2">
+    <div class="note good" style="margin:0">
+      <h4><span class="ico i-green">✓</span> Not create-time</h4>
+      <p>
+        Works on an existing table. Changing a description does <strong>not</strong> require
+        rebuilding — unlike schema, key, partitioning, or clustering.
+      </p>
+    </div>
+    <div class="note warn" style="margin:0">
+      <h4><span class="ico i-yellow">!</span> The handler hides failures by design</h4>
+      <p>
+        Descriptions are metadata and must never fail an hourly load. But if a column is
+        missing from the table, the whole <code>ALTER</code> becomes a silent no-op and the
+        job stays <strong>green</strong>. Grep the run log for <code>skipped:</code>.
+      </p>
+    </div>
+  </div>
+
+  <p style="margin-top:18px">
+    Escaping is mandatory and not a detail: SAP annotations contain apostrophes
+    (<em>Trading Partner's Business Area</em>) and line breaks, and either one breaks the SQL
+    literal — taking down the entire product's DDL.
+  </p>
+</section>
+
+<section id="layout">
+  <div class="eyebrow">Change 3 · physical layout</div>
+  <h2>Partitioning and clustering that actually apply</h2>
+
+  <h3>Where layout settings actually arrive</h3>
+  <p>
+    <code>cortex-build</code> reads <code>partitionDetails</code> and
+    <code>clusterDetails</code> from the YAML, <strong>translates</strong> them into
+    Dataform's format, and delivers them in <code>publishConfig.bigquery</code>. The original
+    keys disappear along the way.
+  </p>
+
+  <div class="code" style="margin:16px 0">
+    <div class="code-h"><span class="code-t">configuration flow</span><span class="tag t-neutral">cortex-build behavior</span></div>
+<pre>table_settings.default.yaml
+        ↓  <span class="cmt">(cortex-build TRANSLATES and DISCARDS the original keys)</span>
+publishConfig.bigquery.partitionBy   = <span class="str">"DATE(column)"</span>
+publishConfig.bigquery.clusterBy     = [<span class="str">"col1"</span>, <span class="str">"col2"</span>, …]
+publishConfig.columns                = {column: description}
+        ↓
+iceberg_helper.publishProduct(…)
+
+<span class="cmt">// tableConfig reaches the helper carrying only:</span>
+<span class="cmt">// ["tableName","tags","materializationType","bigquery","description","columns"]</span></pre>
+  </div>
+
+  <div class="note warn">
+    <h4><span class="ico i-yellow">!</span> Reading <code>tableConfig.partitionDetails</code> returns <code>undefined</code></h4>
+    <p>
+      Silently. The helper falls through and nothing happens — the table is rebuilt without
+      partitioning while the YAML looks correct. Worse: keys that
+      <code>cortex-build</code> does not recognize pass YAML validation and are discarded.
+      <strong>Dead configuration is worse than absent configuration</strong>, because it
+      reads as working.
+    </p>
+  </div>
+
+  <h3 style="margin-top:26px">The <code>DATE(col)</code> correction</h3>
+  <p>
+    <code>cortex-build</code> assembles <code>partitionBy</code> without inspecting types:
+    a column plus <code>partitionType: DATE</code> becomes <code>DATE(column)</code>. When
+    the column is <strong>already DATE</strong> — the case for every SAP date field —
+    BigQuery rejects the <code>CREATE</code>, because <code>DATE()</code> accepts only
+    TIMESTAMP or DATETIME.
+  </p>
+
+  <div class="code" style="margin:16px 0">
+    <div class="code-h"><span class="code-t">iceberg_helper.js — selective unwrapping</span><span class="tag t-after">Fork</span></div>
+<pre><span class="cmt">// Unwraps DATE(col) → col when the argument is a simple identifier.</span>
+<span class="cmt">// Leaves DATE_TRUNC(...) and TIMESTAMP_TRUNC(...) intact.</span>
+<span class="kw">const</span> unwrapped = rawPartition.replace(/^DATE\(\s*([A-Za-z0-9_]+)\s*\)$/, <span class="str">"$1"</span>);</pre>
+  </div>
+
+  <h3 style="margin-top:26px">Clustering from the YAML, not from the key</h3>
+  <p>
+    The helper prefers <code>publishConfig.bigquery.clusterBy</code> and falls back to the
+    unique key only when the YAML declares nothing. The difference is concrete: Cortex keys
+    begin with columns that are constant in many landscapes — client and ledger — and
+    BigQuery allows only <strong>four</strong> clustering columns.
+  </p>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="code">
+      <div class="code-h"><span class="code-t">derived from the unique key</span><span class="tag t-before">Wastes 2 slots</span></div>
+<pre>CLUSTER BY
+  <span class="del">client_rclnt,</span>        <span class="cmt">-- always '400'</span>
+  <span class="del">ledger_rldnr,</span>        <span class="cmt">-- single-valued</span>
+  company_code_rbukrs,
+  fiscal_year_gjahr</pre>
+    </div>
+    <div class="code">
+      <div class="code-h"><span class="code-t">declared in clusterDetails</span><span class="tag t-after">4 useful slots</span></div>
+<pre>CLUSTER BY
+  <span class="add">company_code_rbukrs,</span>
+  <span class="add">fiscal_year_gjahr,</span>
+  <span class="add">accounting_document_number_belnr,</span>
+  <span class="add">line_item_docln</span></pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <h4><span class="ico i-blue">i</span> The partition exists, but not where you would look for it</h4>
+    <p>
+      <code>INFORMATION_SCHEMA.TABLES.ddl</code> <strong>does not render</strong> the
+      <code>PARTITION BY</code> clause for Iceberg tables — it shows only
+      <code>CLUSTER BY</code>. That led to the wrong conclusion that partitioning did not
+      persist, and the incorrect comment in the code blocked the implementation for months.
+    </p>
+    <p>
+      The reliable source is the <strong>BigQuery UI, Details tab</strong>: it should read
+      "Partitioned by DAY" and name the field.
+    </p>
+  </div>
+</section>
+
+<section id="watermark">
+  <div class="eyebrow">Change 4 · load cost</div>
+  <h2>Watermark materialized as a script variable</h2>
+  <div class="sec-intro">
+    <p>
+      The first of three cost levers, and the most transferable: it applies to every
+      incremental Cortex data product, in any deployment.
+    </p>
+  </div>
+
+  <p>
+    Cortex's incremental filter compares the source <code>recordstamp</code> against the
+    maximum already loaded into the target. Because that cutoff comes from a
+    <strong>correlated subquery</strong>, BigQuery does not know the value at planning time
+    and <strong>cannot prune partitions</strong> — it reads almost the entire source on every
+    run.
+  </p>
+
+  <div class="grid g2" style="margin:20px 0">
+    <div class="code">
+      <div class="code-h"><span class="code-t">filter — before</span><span class="tag t-before">No pruning</span></div>
+<pre><span class="kw">MERGE</span> target T
+<span class="kw">USING</span> (
+  <span class="kw">SELECT</span> … <span class="kw">FROM</span> source
+  <span class="kw">WHERE</span> recordstamp &gt;= <span class="del">(
+    <span class="kw">SELECT</span> <span class="kw">MAX</span>(source_last_updated_at)
+    <span class="kw">FROM</span> target
+  )</span>
+) S <span class="kw">ON</span> …</pre>
+    </div>
+    <div class="code">
+      <div class="code-h"><span class="code-t">filter — after</span><span class="tag t-after">Prunes partitions</span></div>
+<pre><span class="kw">BEGIN</span>
+  <span class="add"><span class="kw">DECLARE</span> _watermark <span class="kw">TIMESTAMP</span> <span class="kw">DEFAULT</span> (
+    <span class="kw">SELECT</span> <span class="kw">MAX</span>(source_last_updated_at) <span class="kw">FROM</span> target
+  );</span>
+  <span class="kw">MERGE</span> target T
+  <span class="kw">USING</span> (
+    <span class="kw">SELECT</span> … <span class="kw">FROM</span> source
+    <span class="kw">WHERE</span> recordstamp &gt;= <span class="add">_watermark</span>
+  ) S <span class="kw">ON</span> …
+<span class="kw">END</span>;</pre>
+    </div>
+  </div>
+
+  <p>Measured in production, same delta, same result:</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Filter form</th><th class="num">Bytes read</th><th>Reading</th></tr></thead>
+      <tbody>
+        <tr><td>Literal <code>&gt;= TIMESTAMP('…')</code></td><td class="num">22 MB</td><td>theoretical best</td></tr>
+        <tr><td>Correlated subquery</td><td class="num" style="color:var(--g-red);font-weight:700">5.5 GB</td><td>250× more expensive</td></tr>
+        <tr><td><strong>Script variable (<code>DECLARE</code>)</strong></td><td class="win">18.6 MB</td><td>matches the literal</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note good">
+    <h4><span class="ico i-green">✓</span> No semantic change, no rebuild</h4>
+    <p>
+      The cutoff value is identical — simply evaluated once, before the <code>MERGE</code>,
+      rather than inside it. And because it changes only the filter, it
+      <strong>requires no DROP</strong>: it takes effect on the next run.
+    </p>
+  </div>
+
+  <div class="note warn">
+    <h4><span class="ico i-yellow">!</span> The substitution is textual</h4>
+    <p>
+      The helper looks for the subquery in the exact form generated by
+      <code>incremental.getFilter</code> and swaps it for the variable. If the text does not
+      match — different indentation or quoting — behavior stays correct but the saving
+      disappears. A safe fallback, but a silent one.
+    </p>
+  </div>
+</section>
+
+<section id="pruning">
+  <div class="eyebrow">Change 5 · load cost</div>
+  <h2>Partition pruning inside the <code>MERGE</code></h2>
+  <div class="sec-intro">
+    <p>
+      The highest-impact lever — and the only one carrying a correctness precondition that
+      must be verified before adoption.
+    </p>
+  </div>
+
+  <p>
+    A key-only <code>ON T.key = S.key</code> <strong>never</strong> engages the target's
+    partitioning: BigQuery scans the entire table to match keys. On a 370-million-row table
+    that dominates cost. The fix is to give the planner a predicate on the
+    <strong>partition column</strong>, computing the batch's date bounds into script
+    variables.
+  </p>
+
+  <div class="code" style="margin:18px 0">
+    <div class="code-h"><span class="code-t">iceberg_helper.js — pruning predicate in the ON clause</span><span class="tag t-after">Fork</span></div>
+<pre><span class="kw">BEGIN</span>
+  <span class="kw">DECLARE</span> _watermark <span class="kw">TIMESTAMP</span> <span class="kw">DEFAULT</span> (…);
+  <span class="add"><span class="kw">DECLARE</span> _part_min <span class="kw">DATE</span>;
+  <span class="kw">DECLARE</span> _part_max <span class="kw">DATE</span>;
+  <span class="kw">SET</span> (_part_min, _part_max) = (
+    <span class="kw">SELECT AS STRUCT</span> <span class="kw">MIN</span>(`budat`), <span class="kw">MAX</span>(`budat`) <span class="kw">FROM</span> ( … delta … )
+  );</span>
+
+  <span class="kw">MERGE</span> target T <span class="kw">USING</span> ( … delta … ) S
+  <span class="kw">ON</span>  <span class="hi">T.`budat` <span class="kw">BETWEEN</span> <span class="kw">COALESCE</span>(_part_min, <span class="kw">DATE</span> <span class="str">'0001-01-01'</span>)
+                    <span class="kw">AND</span> <span class="kw">COALESCE</span>(_part_max, <span class="kw">DATE</span> <span class="str">'9999-12-31'</span>)</span>
+  <span class="kw">AND</span> T.`key` = S.`key` <span class="kw">AND</span> …
+<span class="kw">END</span>;</pre>
+  </div>
+
+  <div class="note risk">
+    <h4><span class="ico i-red">!</span> Correctness precondition — read before adopting</h4>
+    <p>
+      The range predicate makes the <code>MERGE</code> match <strong>only</strong> rows whose
+      partition column falls inside the batch bounds. This is safe only if the column is
+      <strong>immutable per key</strong>. If the value changes between loads, the existing row
+      falls outside the range, the <code>MERGE</code> misses it, and inserts a
+      <strong>silent duplicate</strong>.
+    </p>
+    <p>
+      Here it was verified for posting date (immutable after posting): zero divergences across
+      30 days of CDC and a full fiscal year. <strong>That is a verified assumption, not a
+      guarantee</strong> — the mitigation is a scheduled uniqueness check, which detects after
+      the fact rather than preventing.
+    </p>
+  </div>
+
+  <div class="note">
+    <h4><span class="ico i-blue">i</span> Why the <code>COALESCE</code> is not optional</h4>
+    <p>
+      If the delta comes back empty, <code>MIN</code> and <code>MAX</code> return
+      <code>NULL</code> and the <code>BETWEEN</code> would never match — <strong>the entire
+      delta would be inserted</strong>. With an open fallback the predicate is always true and
+      behavior returns to normal: no pruning, but correct.
+    </p>
+  </div>
+
+  <h3 style="margin-top:26px">Three conditions to activate</h3>
+  <p>The helper only builds the predicate when all three hold — any one false leaves the <code>MERGE</code> untouched:</p>
+  <ul class="tight">
+    <li>the target is partitioned;</li>
+    <li>the partition expression references a <strong>single simple column</strong> (otherwise it returns <code>null</code> and pruning is disabled);</li>
+    <li>the incremental filter uses a watermark — without it the "delta" is the whole table, and the bounds would span all history.</li>
+  </ul>
+
+  <h3 style="margin-top:26px">The third lever stays outside the helper</h3>
+  <p>
+    Source-side pruning could not be automated: the helper receives the product's
+    <code>SELECT</code> as opaque text and has no knowledge of the source tables. It must be
+    written into the product itself, with CTEs filtering each source by the delta's date list.
+    It matters when the filter is evaluated after the joins — the
+    <code>GREATEST(a.recordstamp, b.recordstamp, …)</code> pattern of multi-source products.
+  </p>
+</section>
+
+<section id="results">
+  <h2>Measured results</h2>
+  <div class="sec-intro">
+    <p>
+      All measurements from production with active CDC. Development environments are not a
+      valid surface for cost measurement: with batch loading paused, the watermark never
+      advances and the delta is the entire table.
+    </p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Data product</th><th class="num">Before</th><th class="num">After</th><th class="num">Factor</th><th>Lever</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Universal journal entry line items<div class="sub">370 M rows, hourly</div></td>
+          <td class="num">612 GB</td><td class="win">28 GB</td><td class="win">22×</td><td>predicate in <code>ON</code></td>
+        </tr>
+        <tr>
+          <td>Accounts receivable<div class="sub">10 M rows, three sources</div></td>
+          <td class="num">778 GB</td><td class="win">186 GB</td><td class="win">4.2×</td><td>date CTEs + target</td>
+        </tr>
+        <tr>
+          <td><strong>Finance product group</strong><div class="sub">per complete run</div></td>
+          <td class="num">~1.4 TB</td><td class="win">~215 GB</td><td class="win">6.5×</td><td>all three levers</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>What did <em>not</em> work</h3>
+  <p>
+    Worth as much as what did: of four approaches tried on accounts receivable,
+    <strong>three returned nothing</strong>.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Attempt</th><th class="num">Bytes</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Baseline (plain <code>GREATEST</code>)</td><td class="num">828 GB</td><td class="zero">reference</td></tr>
+        <tr><td>CTE of affected <strong>keys</strong></td><td class="num">828 GB</td><td class="zero">zero — keys are not the partition</td></tr>
+        <tr><td><code>BETWEEN</code> on date bounds</td><td class="num">277 GB</td><td>partial — seven-month range</td></tr>
+        <tr><td><strong>Explicit date list</strong></td><td class="win">71–137 GB</td><td>the sparse tail was the problem</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <h4><span class="ico i-blue">i</span> Why the list beat the range</h4>
+    <p>
+      Of ~98,000 delta rows, <strong>90,224 fell on a single day</strong>. The rest was a long
+      tail of retroactive adjustments — eight rows from February stretched the range across
+      seven months and cost roughly 250 GB.
+    </p>
+  </div>
+
+  <div class="note warn">
+    <h4><span class="ico i-yellow">!</span> Two measurement traps</h4>
+    <p>
+      <strong>Do not measure with <code>COUNT(*)</code>.</strong> BigQuery cost is scan width,
+      not row count — the same query cost 19 GB with <code>COUNT(*)</code> and 828 GB with
+      <code>SELECT *</code>.
+    </p>
+    <p>
+      <strong>Validate uniqueness with the complete key.</strong> Omitting one key column makes
+      every count look duplicated — on the journal table, dropping the ledger column produces a
+      false 2:1 ratio that reads as production duplication.
+    </p>
+  </div>
+</section>
+
+<section id="custom">
+  <div class="eyebrow">Change 6 · extension</div>
+  <h2>Custom product namespace</h2>
+  <div class="sec-intro">
+    <p>
+      The deployment adds a namespace parallel to <code>cortex</code>, holding 12 products that
+      cover gaps in the standard set. This is the framework's intended extension mechanism —
+      <code>config.yaml</code> simply registers the path.
+    </p>
+  </div>
+
+  <div class="code" style="margin:18px 0">
+    <div class="code-h"><span class="code-t">config/config.yaml — namespace registration</span><span class="tag t-after">Fork</span></div>
+<pre>data:
+  namespaces:
+    - name: cortex
+      path: ../src/data_modules/cortex
+    - name: cortex_v6_compatibility
+      path: ../src/data_modules/cortex_v6_compatibility
+    <span class="add">- name: custom_&lt;customer&gt;
+      path: ../src/data_modules/custom_&lt;customer&gt;</span></pre>
+  </div>
+
+  <div class="grid g3">
+    <div class="card">
+      <h3>Organizational texts</h3>
+      <p>Sales groups, offices and districts; billing document types; payment terms; incoterms.</p>
+      <p style="margin-top:9px"><span class="pill p-prod">6 products</span></p>
+    </div>
+    <div class="card">
+      <h3>Sales-area views</h3>
+      <p>Material and customer by sales organization and distribution channel — the two widest dimensions, feeding the analytical layer.</p>
+      <p style="margin-top:9px"><span class="pill p-prod">2 products</span></p>
+    </div>
+    <div class="card">
+      <h3>Brazilian localization</h3>
+      <p>Electronic invoice headers and items, including the 44-digit access key — outside the scope of global Cortex.</p>
+      <p style="margin-top:9px"><span class="pill p-prod">2 products</span></p>
+    </div>
+    <div class="card">
+      <h3>Product extensions</h3>
+      <p>Additional fields on sales documents and customer master, kept separate from standard products so upgrades do not conflict.</p>
+      <p style="margin-top:9px"><span class="pill p-prod">2 products</span></p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:28px">Fourteen new foundation tables</h3>
+  <p>
+    The custom products required annotating SAP sources the standard framework does not
+    replicate. Each enters as a foundation annotation, following the same pattern as the
+    native ones — electronic invoice tables, customer and material sales-area masters,
+    payment terms, sales district and incoterm configuration texts.
+  </p>
+
+  <div class="note good">
+    <h4><span class="ico i-green">✓</span> A separation that survives upgrades</h4>
+    <p>
+      No custom product lives inside <code>data_modules/cortex/</code>. A framework upgrade
+      can replace the standard namespace wholesale without touching the extensions — and the
+      helper, being an include, is the only point in the core to reapply.
+    </p>
+  </div>
+</section>
+
+<section id="fixes">
+  <div class="eyebrow">Change 7 · correctness</div>
+  <h2>Data corrections in standard products</h2>
+  <div class="sec-intro">
+    <p>Three corrections unrelated to Iceberg that apply to any Cortex v7 installation.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-b">
+        <h3>TIME to TIMESTAMP conversion</h3>
+        <p>
+          SAP TIME columns are not directly materializable on the Iceberg path. The conversion
+          was applied at <strong>145 points across 58 files</strong>.
+        </p>
+        <div class="code">
+          <div class="code-h"><span class="code-t">the working form</span><span class="tag t-after">Fork</span></div>
+<pre><span class="del">CAST(column AS TIMESTAMP)</span>                              <span class="cmt">-- not valid in BigQuery</span>
+<span class="add">TIMESTAMP(DATETIME(DATE '1970-01-01', column))</span>          <span class="cmt">-- valid form</span></pre>
+        </div>
+        <p style="margin-top:10px">
+          The base date is conventional and carries no meaning. The alternative — pairing each
+          time with its corresponding date field — would require field-by-field mapping, and
+          several fields have no date counterpart.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-b">
+        <h3>Material document key</h3>
+        <p>
+          The movements product carried <strong>199,015 duplicate keys</strong> whose data
+          diverged completely. They were legitimate debit/credit transfer pairs — identical
+          quantity and date, differing only in the debit/credit indicator.
+        </p>
+        <p style="margin-top:10px">
+          Deduplicating would have corrupted inventory balances. The fix was to add
+          <code>debit_credit_indicator_shkzg</code> (SAP field <code>SHKZG</code>) to the
+          <code>uniqueKey</code>, making each leg unique.
+        </p>
+        <div class="code">
+          <div class="code-h"><span class="code-t">materials_movement/definitions/{ecc,s4}/material_documents.js</span><span class="tag t-after">Fork</span></div>
+<pre>publish_config.getPublishConfig(
+  materializationType, tableConfig, moduleConfig,
+  [
+    <span class="cmt">"client_mandt",</span>
+    <span class="cmt">"document_number_mblnr",</span>
+    <span class="cmt">"document_year_mjahr",</span>
+    <span class="cmt">"document_item_zeile",</span>
+    <span class="add">"debit_credit_indicator_shkzg"    // &lt;- added</span>
+  ]
+);</pre>
+        </div>
+        <p style="margin-top:10px">
+          Applied to both the ECC and S/4 definitions. This is a CREATE-time change, so it
+          required DROP + reload. Afterward, row count and distinct key count matched exactly
+          at 15,882,543.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-b">
+        <h3>Direct invoices in the document flow</h3>
+        <p>
+          The sales flow product modeled only the <em>order → delivery → billing</em> chain.
+          Invoices issued directly from an order, with no delivery, fell outside it —
+          understating revenue in scenarios without physical shipment.
+        </p>
+        <div class="grid g2" style="margin-top:12px">
+          <div class="code">
+            <div class="code-h"><span class="code-t">sales_document_flow.js — before</span><span class="tag t-before">Baseline</span></div>
+<pre><span class="cmt">-- one branch: delivery is mandatory</span>
+<span class="kw">SELECT</span> …
+<span class="kw">FROM</span> vbfa <span class="kw">AS</span> SO
+<span class="kw">LEFT OUTER JOIN</span> vbfa <span class="kw">AS</span> Deliveries
+  <span class="kw">ON</span> SO.vbeln = Deliveries.vbelv
+<span class="kw">WHERE</span> SO.vbtyp_n <span class="kw">IN</span> (<span class="str">delivery</span>)
+  <span class="kw">AND</span> <span class="del">Deliveries.vbtyp_n IN (billing)</span>
+<span class="cmt">-- an order billed with no delivery</span>
+<span class="cmt">-- never produces a row</span></pre>
+          </div>
+          <div class="code">
+            <div class="code-h"><span class="code-t">sales_document_flow.js — after</span><span class="tag t-after">Fork</span></div>
+<pre><span class="cmt">-- branch 1: order → delivery → billing</span>
+<span class="kw">SELECT</span> … <span class="kw">FROM</span> vbfa <span class="kw">AS</span> SO
+<span class="kw">LEFT OUTER JOIN</span> vbfa <span class="kw">AS</span> Billing
+  <span class="kw">ON</span> … <span class="kw">AND</span> Billing.vbtyp_n <span class="kw">IN</span> (<span class="str">billing</span>)
+<span class="kw">WHERE</span> SO.vbtyp_n <span class="kw">IN</span> (<span class="str">delivery</span>)
+
+<span class="add">UNION ALL</span>
+
+<span class="cmt">-- branch 2: order → billing, no delivery</span>
+<span class="kw">SELECT</span> … <span class="kw">FROM</span> vbfa <span class="kw">AS</span> SO
+<span class="kw">WHERE</span> SO.vbtyp_n <span class="kw">IN</span> (<span class="str">billing</span>)
+  <span class="add">AND NOT EXISTS (</span>
+    <span class="kw">SELECT</span> 1 <span class="kw">FROM</span> vbfa X
+    <span class="kw">WHERE</span> X.vbelv = SO.vbelv
+      <span class="kw">AND</span> X.vbtyp_v <span class="kw">IN</span> (<span class="str">delivery</span>))</pre>
+          </div>
+        </div>
+        <p style="margin-top:12px">
+          The <code>NOT EXISTS</code> is what keeps the grain intact: branch 2 only emits rows
+          for orders that have no delivery leg at all, so an order billed through a delivery is
+          never counted twice.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cicd">
+  <div class="eyebrow">Change 8 · operations</div>
+  <h2>Deployment pipeline and per-environment parameters</h2>
+
+  <p>
+    The deployment adds a CI configuration that splits execution into six domain groups, each
+    independently triggerable. Development runs manually; production runs on a schedule.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Group</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr><td><code>masterdata</code></td><td>standard Cortex master data</td></tr>
+        <tr><td><code>sales_tx</code></td><td>sales documents and their extensions</td></tr>
+        <tr><td><code>finance_tx</code></td><td>universal journal and accounts receivable</td></tr>
+        <tr><td><code>supply_tx</code></td><td>material movements</td></tr>
+        <tr><td><code>masterdata_custom</code></td><td>custom namespace master data</td></tr>
+        <tr><td><code>notas_fiscais</code></td><td>electronic invoice products</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Parameterizing bucket and connection</h3>
+  <p>
+    One codebase serves every environment. The table settings carry only the default value; at
+    run time the pipeline injects the correct bucket and connection through Dataform's
+    official variable mechanism.
+  </p>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="code">
+      <div class="code-h"><span class="code-t">workflow_settings.yaml</span><span class="tag t-after">Fork</span></div>
+<pre>dataformCoreVersion: <span class="str">"3.0.64"</span>   <span class="cmt">-- 3.0.59 lacks Iceberg</span>
+defaultLocation: <span class="str">"US"</span>
+<span class="add">vars:
+  icebergBucket: <span class="str">"…-dev"</span>
+  icebergConnection: <span class="str">"DEFAULT"</span></span></pre>
+    </div>
+    <div class="code">
+      <div class="code-h"><span class="code-t">pipeline — per-environment injection</span><span class="tag t-after">Fork</span></div>
+<pre>dataform run $ACTIONS_FINANCE_TX \
+  --timeout=30m \
+  <span class="add">"--vars=icebergBucket=$ICEBERG_BUCKET,\
+          icebergConnection=$ICEBERG_CONNECTION"</span> \
+  --default-location $BQ_LOCATION</pre>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <h4><span class="ico i-yellow">!</span> Two operational traps</h4>
+    <p>
+      <strong>Do not use <code>process.env</code>.</strong> The Dataform sandbox does not
+      expose it — the read fails silently and the product lands in the wrong bucket. Variables
+      arrive through <code>dataform.projectConfig.vars</code>.
+    </p>
+    <p>
+      <strong><code>--timeout</code> covers the whole run</strong>, not each action. If it
+      expires, the final actions in the list are cut silently and the job reports success.
+      Verify which tables actually exist after each group.
+    </p>
+  </div>
+</section>
+
+<section id="skills">
+  <div class="eyebrow">Change 9 · knowledge capture</div>
+  <h2>Two agent skills, versioned with the code</h2>
+  <div class="sec-intro">
+    <p>
+      Cortex v7 ships an <code>.agents/skills/</code> directory — a set of phased playbooks that
+      guide an AI agent through creating, updating, validating and deploying data products. The
+      deployment added two skills in that same format, and wired them into
+      <code>AGENTS.md</code> as standing rules.
+    </p>
+    <p>
+      This is the piece we would most like your read on. Everything else in this document is a
+      code change; this is the reasoning behind the code changes, written where the next person
+      — human or agent — will actually find it.
+    </p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Skill</th><th class="num">Lines</th><th>Scope</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>materialize_as_iceberg</code><div class="sub">Invoked directly, or referenced by create/update</div></td>
+          <td class="num">651</td>
+          <td>How to publish a data product as managed Iceberg: helper boilerplate, storage URI conventions, incremental vs full-refresh behavior, the SQL bug catalog, cost levers, validation gates</td>
+        </tr>
+        <tr>
+          <td><code>tramontina_cortex_cicd</code><div class="sub">Consulted before any git or pipeline action</div></td>
+          <td class="num">154</td>
+          <td>The delivery process around it: protected-branch flow, agent-vs-human division of labor, config-variable duality, recovery procedures</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>How the Iceberg skill is organized</h3>
+  <p>
+    It follows the phased structure of the framework's own skills, and reads as a decision
+    procedure rather than reference documentation:
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Phase</th><th>What it decides</th></tr></thead>
+      <tbody>
+        <tr><td><strong>0</strong> · Confirm Iceberg is required</td><td>Opens by talking the reader <em>out</em> of Iceberg when a native table would do</td></tr>
+        <tr><td><strong>1</strong> · Use the helper</td><td>Canonical boilerplate — "copy a working product; never invent an API"</td></tr>
+        <tr><td><strong>2</strong> · Storage URI, bucket, connection</td><td>Hierarchical GCS layout, per-environment buckets, <code>DEFAULT</code> connection, injected vars</td></tr>
+        <tr><td><strong>3</strong> · Incremental vs full refresh</td><td>Sixteen numbered sub-sections — the bug catalog</td></tr>
+        <tr><td><strong>3.9</strong> · The three validation gates</td><td>Why "it compiled" is not "it works"</td></tr>
+        <tr><td><strong>4–5</strong> · Extensions and CI</td><td><code>_ext</code> product conventions, pipeline integration</td></tr>
+        <tr><td><strong>6–7</strong> · Quality gate and caveats</td><td>Post-load verification, environment differences to surface</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <h4><span class="ico i-blue">i</span> Section 3 is the part that took the longest to write</h4>
+    <p>
+      Each sub-section is one failure that cost at least a full investigation cycle, written as
+      a symptom and a rule. A few examples of the headings, verbatim:
+    </p>
+    <p>
+      <em>"The mandt/tenant predicate goes INSIDE <code>buildDynamicWhere</code>, never as a
+      trailing AND"</em> · <em>"A Scalar subquery MERGE failure can mean the product's key is
+      INCOMPLETE, not that the source is dirty"</em> · <em>"Layout configs do NOT arrive in
+      tableConfig"</em> · <em>"DROPping a managed Iceberg table leaves ORPHANED FILES in GCS"</em>
+      · <em>"Measure incremental-MERGE cost ONLY in an environment with active CDC"</em>
+    </p>
+  </div>
+
+  <h3 style="margin-top:26px">Wired in as standing rules, not just slash commands</h3>
+  <p>
+    Both skills are registered in <code>AGENTS.md</code>, and the CI/CD one carries an explicit
+    instruction that its invariants apply continuously — not only when the command is invoked:
+  </p>
+
+  <div class="code" style="margin:16px 0">
+    <div class="code-h"><span class="code-t">.agents/AGENTS.md — added section</span><span class="tag t-after">Fork</span></div>
+<pre><span class="cmt">## Version Control &amp; CI/CD (always in effect for this repo)</span>
+
+Before ANY git operation, pipeline run, .gitlab-ci.yml or CI/CD-variable edit,
+or prod promotion, load and follow tramontina_cortex_cicd — <span class="add">even for
+routine-looking actions</span>. This is not only a slash command; treat its
+invariants as <span class="add">standing rules</span> whenever you touch version control
+or the pipeline.</pre>
+  </div>
+
+  <p>
+    The invariants it then lists are the ones that were learned expensively: never
+    <code>git add .</code>; the merge-request form pre-fills the wrong target branch; remote
+    refs are the source of truth because local tracking refs go stale; the pipeline builds from
+    a CI/CD file variable rather than the repository config, so registering a module locally is
+    not enough.
+  </p>
+
+  <div class="note warn">
+    <h4><span class="ico i-yellow">!</span> One invariant worth highlighting: the division of labor</h4>
+    <p>
+      The skill states that the agent only edits files in the working tree — it does not run
+      builds, query BigQuery, operate the GitLab UI, or push on its own authority. The human
+      runs those, and <strong>observed output, not predicted success, is what advances a
+      step</strong>.
+    </p>
+    <p>
+      That rule exists because an agent reported a successful edit it had not made. It is worth
+      stating explicitly in any framework that ships agent skills.
+    </p>
+  </div>
+
+  <h3 style="margin-top:26px">Why this might matter upstream</h3>
+  <p>
+    Cortex already treats skills as a first-class artifact, which is what made this possible.
+    Two observations from using that system in anger:
+  </p>
+  <ul class="tight">
+    <li>
+      <strong>The failure catalog is the valuable part.</strong> Most of what a team needs is not
+      how the framework works when it works — it is which silent failures look like success.
+      Several entries here (<code>DATE(col)</code> on a DATE column, layout configs not reaching
+      <code>tableConfig</code>, orphaned GCS files after DROP) are framework behaviors, not
+      deployment-specific ones, and would fit a framework-owned skill.
+    </li>
+    <li>
+      <strong>Skills need a place for "measure, do not assume."</strong> The strongest rules in
+      this skill are about method — measure cost only with active CDC, never with
+      <code>COUNT(*)</code>, validate with the complete key. Those transfer to any deployment and
+      are invisible in reference documentation.
+    </li>
+  </ul>
+
+  <div class="note good">
+    <h4><span class="ico i-green">✓</span> Available for review</h4>
+    <p>
+      Both skill files are plain Markdown in the framework's own format and can be shared as-is.
+      The Iceberg one is written to be deployment-agnostic; the CI/CD one is specific to this
+      customer's GitLab setup and is included mainly as an example of the shape.
+    </p>
+  </div>
+</section>
+
+<section id="porting">
+  <h2>Porting checklist</h2>
+  <div class="sec-intro">
+    <p>
+      The changes were designed to be generic. What is customer-specific are configuration
+      values — bucket names, connection, client number — not logic.
+    </p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Component</th><th>Transfers</th><th>What to adjust</th></tr></thead>
+      <tbody>
+        <tr><td><code>iceberg_helper.js</code></td><td><span class="pill p-prod">As-is</span></td><td>Nothing. Copy into <code>src/dataform_includes/</code></td></tr>
+        <tr><td>Adoption in products</td><td><span class="pill p-prod">As-is</span></td><td>Swap <code>publish()</code> for the helper — three lines each</td></tr>
+        <tr><td>Watermark variable</td><td><span class="pill p-prod">As-is</span></td><td>Nothing. Ships inside the helper</td></tr>
+        <tr><td>Iceberg blocks in YAML</td><td><span class="pill p-info">Configuration</span></td><td>Target project's bucket and connection</td></tr>
+        <tr><td>Partition pruning</td><td><span class="pill p-risk">Needs verification</span></td><td>Confirm the partition column is immutable per key</td></tr>
+        <tr><td>TIME → TIMESTAMP</td><td><span class="pill p-prod">As-is</span></td><td>Nothing — corrects framework behavior</td></tr>
+        <tr><td>Data corrections</td><td><span class="pill p-prod">As-is</span></td><td>Material document key and sales flow</td></tr>
+        <tr><td>Custom namespace</td><td><span class="pill p-dev">Template</span></td><td>Structure reusable; products are customer-specific</td></tr>
+        <tr><td>CI pipeline</td><td><span class="pill p-dev">Template</span></td><td>Groups and schedules per environment</td></tr>
+        <tr><td><code>materialize_as_iceberg</code> skill</td><td><span class="pill p-prod">As-is</span></td><td>Written deployment-agnostic; bucket names are illustrative</td></tr>
+        <tr><td><code>tramontina_cortex_cicd</code> skill</td><td><span class="pill p-dev">Template</span></td><td>Specific to this GitLab setup; the shape transfers</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Infrastructure prerequisites</h3>
+  <ul class="tight">
+    <li>A Cloud Storage bucket and a BigQuery cloud resource connection, registered as the project default — so one codebase serves every environment.</li>
+    <li>The execution service account needs <strong><code>storage.admin</code></strong> on the bucket, not just <code>objectAdmin</code>: BigLake sets an IAM policy when creating the managed Iceberg table.</li>
+    <li><code>dataformCoreVersion</code> at <strong>3.0.64</strong> or later. 3.0.59 does not support Iceberg.</li>
+  </ul>
+
+  <h3 style="margin-top:24px">What requires rebuilding the table</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Change</th><th>Needs DROP + reload?</th></tr></thead>
+      <tbody>
+        <tr><td>Column schema</td><td><span class="pill p-risk">Yes</span></td></tr>
+        <tr><td>Unique key</td><td><span class="pill p-risk">Yes</span></td></tr>
+        <tr><td><code>PARTITION BY</code></td><td><span class="pill p-risk">Yes</span></td></tr>
+        <tr><td><code>CLUSTER BY</code> on incremental products</td><td><span class="pill p-risk">Yes</span></td></tr>
+        <tr><td><code>CLUSTER BY</code> on full refresh</td><td><span class="pill p-prod">No</span> — <code>CREATE OR REPLACE</code> rebuilds</td></tr>
+        <tr><td>Table and column descriptions</td><td><span class="pill p-prod">No</span> — <code>ALTER</code> handles it</td></tr>
+        <tr><td>Watermark and <code>SELECT</code> logic</td><td><span class="pill p-prod">No</span> — applies on the next run</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note risk">
+    <h4><span class="ico i-red">!</span> <code>DROP</code> does not clean Cloud Storage</h4>
+    <p>
+      The Parquet files and Iceberg metadata are orphaned in the bucket, and the next
+      <code>CREATE</code> points at an occupied <code>storage_uri</code>. The prefix must be
+      removed manually — <strong>with the trailing slash</strong>, or the prefix also matches
+      similarly named tables.
+    </p>
+  </div>
+</section>
+
+<section id="risks">
+  <h2>Risks and known debt</h2>
+  <div class="sec-intro">
+    <p>What a team adopting this work should know before putting it into production.</p>
+  </div>
+
+  <div class="grid g2">
+    <div class="card">
+      <h3><span class="pill p-risk">High</span> Silent duplicate from pruning</h3>
+      <p>
+        If the partition column changes value between loads, the <code>MERGE</code> inserts
+        instead of updating — with no error. Safe only with a column verified immutable per
+        key in the actual data. Detection is after the fact, through a scheduled uniqueness
+        check.
+      </p>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-risk">Medium</span> Debug line left in the helper</h3>
+      <p>
+        A conditional <code>console.log</code> remains, keyed on a product name. It does not
+        affect output, but it pollutes the compile log and should be removed before wider use.
+      </p>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-dev">Medium</span> Textual watermark substitution</h3>
+      <p>
+        The optimization depends on matching the subquery in the exact form Cortex generates.
+        A formatting change upstream disables the saving without breaking anything — and
+        without warning. Worth monitoring bytes processed after each framework upgrade.
+      </p>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-dev">Low</span> Baseline drift</h3>
+      <p>
+        This deployment branched from 7.0.2 and upstream is already at 7.0.5. The longer the
+        gap, the greater the reconciliation effort — particularly across the 46 standard
+        products touched to adopt the helper.
+      </p>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-dev">Low</span> Build artifacts in version control</h3>
+      <p>
+        The repository carries compiled output, Python caches, a virtual environment, and
+        single-use utility scripts at the root. Nothing breaks, but it clouds the diff and
+        makes it harder to tell deliverable from scratch work.
+      </p>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-info">Note</span> Validation gates</h3>
+      <p>
+        Compiling is not running. Several issues in this project passed YAML validation and
+        Dataform compilation and surfaced only at execution: missing alias, non-unique key,
+        invalid DDL.
+      </p>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+</div>
+
+
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav a'));
+  var secs = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+  if(!('IntersectionObserver' in window)) return;
+  var seen = {};
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ seen[e.target.id] = e.isIntersecting ? e.intersectionRatio : 0; });
+    var bestId = null, best = -1;
+    secs.forEach(function(s){
+      if(!s) return;
+      var v = seen[s.id] || 0;
+      if(v > best){ best = v; bestId = s.id; }
+    });
+    if(bestId && best > 0){
+      links.forEach(function(a){ a.classList.toggle('on', a.getAttribute('href') === '#' + bestId); });
+    }
+  }, { rootMargin:'-12% 0px -70% 0px', threshold:[0,.25,.5,1] });
+  secs.forEach(function(s){ if(s) io.observe(s); });
+})();
+</script>
